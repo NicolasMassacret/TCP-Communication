@@ -58,7 +58,8 @@ public:
   string HandleRpc(const char* cmd, const char* args)
   {
     fMfe->Msg(MINFO, "HandleRpc", "RPC cmd [%s], args [%s]", cmd, args);
-
+    string response = "OK";
+    return response;
   }
 private:
    
@@ -71,7 +72,8 @@ private:
 /*-- Globals -------------------------------------------------------*/
 
 /* The frontend name (client name) as seen by other MIDAS clients   */
-char const *frontend_name = "Motor_Cryodoor";
+#define FENAME "Motor_Cryodoor"	// Equipment list cannot have variable inside, so need #define constant
+char const *frontend_name = FENAME;
 /* The frontend file name, don't change it */
 char const *frontend_file_name = __FILE__;
 
@@ -120,7 +122,7 @@ INT handleModule(INT nch);
 /*-- Equipment list ------------------------------------------------*/
 
 EQUIPMENT equipment[] = {
-  {"Motor_Cryodoor",                 /* equipment name */
+  {FENAME,                 /* equipment name */
    {4, 0,                   /* event ID, trigger mask */
     "SYSTEM",                      /* event buffer */
     EQ_PERIODIC,   /* equipment type */
@@ -170,14 +172,14 @@ void seq_rotation_callback(INT hDB, INT hseq, void *info)
 {
   printf("odb ... Rotation motor parameter touched \n");
   printf("Position requested: %s \n", LabDriver_settings.Rot_position);
-  cm_msg(MINFO, "Position requested: %s \n", LabDriver_settings.Rot_position);
+  cm_msg(MINFO, "seq_rotation_callback", "Position requested: %s \n", LabDriver_settings.Rot_position);
         
   string resp=myfe->Exchange(string("rotation_")+LabDriver_settings.Rot_position+"\r\n");
         
   //char respond;
   std::string respond_str(resp.c_str());
             
-  printf("Value returned: %s \n", respond_str);
+  printf("Value returned: %s \n", respond_str.c_str());
 }
 
 /*-- Frontend Init -------------------------------------------------*/
@@ -188,7 +190,7 @@ INT frontend_init()
   
   printf("initialize TCP connection \n");
   TMFE* mfe = TMFE::Instance();
-  TMFeError err = mfe->Connect("Motor_Cryodoor", __FILE__);
+  TMFeError err = mfe->Connect(frontend_name, __FILE__);
   if (err.error) {
     printf("Cannot connect, bye.\n");
     return 1;
@@ -201,7 +203,7 @@ INT frontend_init()
   common->LogHistory = 1;
   //common->Buffer = "SYSTEM";
    
-  TMFeEquipment* eq = new TMFeEquipment(mfe, "Motor_Cryodoor", common);
+  TMFeEquipment* eq = new TMFeEquipment(mfe, frontend_name, common);
   eq->Init();
   eq->SetStatus("Starting...", "white");
   eq->ZeroStatistics();
@@ -214,13 +216,13 @@ INT frontend_init()
   mfe->RegisterRpcHandler(myfe);
   myfe->TCPConnect();
   //string resp=myfe->Exchange(string("read m1")+"\r\n");
-  status = local_LabDriver_init("Motor_Cryodoor");
+  status = local_LabDriver_init(frontend_name);
    
    
    
    
 
-  return SUCCESS;
+  return status;
 }
 
 /*-- Frontend Exit -------------------------------------------------*/
@@ -314,13 +316,13 @@ INT read_LabDriver_event(char *pevent, INT off)
   if(LabDriver_settings.dynamic==true)
     {
       /*Update variables to monitor and destination in ODB*/
-      sprintf(monitored_var_str, "/Equipment/Motor_Cryodoor/Settings/LabV_monitored_variables");
+      sprintf(monitored_var_str, "/Equipment/%s/Settings/LabV_monitored_variables", frontend_name);
       db_find_key(hDB, 0, monitored_var_str, &hVar);
       size=sizeof(LabDriver_settings.LabVar);
       db_get_record(hDB, hVar, &LabDriver_settings.LabVar, &size, 0);
     }
         
-  /*Read variables and write there value in ODB*/
+  /*Read variables and write their value in ODB*/
   for(int a=0; a<12; a=a+1)
     {
       if(string(LabDriver_settings.LabVar[a])!="" )
@@ -333,21 +335,21 @@ INT read_LabDriver_event(char *pevent, INT off)
 	  }
 	  catch (const std::invalid_argument& ia){
 	    value=-99999;
-	    printf("Recieved empty message from client. \n");
+	    printf("Received empty message from client. \n");
 	  }
             
 	  printf("Value returned: %f \n", value);
             
-	  sprintf(destination_var_str, "/Equipment/Motor_Cryodoor/Variables/LabV_var_va");
+	  sprintf(destination_var_str, "/Equipment/%s/Variables/LabV_var_val", frontend_name);
 	  db_find_key(hDB, 0, destination_var_str, &hVar);
 	  size=sizeof(LabDriver_variables.LabVarValue);
 	  db_get_record(hDB, hVar, &LabDriver_variables.LabVarValue, &size, 0);
 	  LabDriver_variables.LabVarValue[a]=value;
-	  db_set_value(hDB, 0, "/Equipment/Motor_Cryodoor/Variables/LabV_var_val", LabDriver_variables.LabVarValue, sizeof(LabDriver_variables.LabVarValue), nch, TID_FLOAT);
+	  db_set_value(hDB, 0, destination_var_str, LabDriver_variables.LabVarValue, sizeof(LabDriver_variables.LabVarValue), nch, TID_FLOAT);
         }
     }
     
-  /* Write data bank*/
+  // /* Write data bank*/
   bk_init(pevent);
   float *pfdata;
   bk_create(pevent, "VLAB", TID_FLOAT, (void **)&pfdata);
@@ -355,7 +357,6 @@ INT read_LabDriver_event(char *pevent, INT off)
     *pfdata++ = (float) (LabDriver_variables.LabVarValue[i]);
   }
   bk_close(pevent, pfdata);
-    
 
   return bk_size(pevent);
 }
@@ -375,27 +376,31 @@ INT local_LabDriver_init(char const *eqname)
   status = db_find_key(hDB, 0, set_str, &hSet);
   
   printf("Getting the dynamic variable value. \n");
-  sprintf(dynamic_set_str, "/Equipment/Motor_Cryodoor/Settings/Dynamic_mode");
+  sprintf(dynamic_set_str, "/Equipment/%s/Settings/Dynamic_mode", eqname);
   db_find_key(hDB, 0, dynamic_set_str, &hSet);
   size=sizeof(LabDriver_settings.dynamic);
   db_get_record(hDB, hSet, &LabDriver_settings.dynamic, &size, 0);
   printf("Getting the dynamic variable value. Bis \n");
   
   //------
-  sprintf(rot_set_str, "/Equipment/Motor_Cryodoor/Settings/Rotation_position");
+  sprintf(rot_set_str, "/Equipment/%s/Settings/Rotation_position", eqname);
   db_find_key(hDB, 0, rot_set_str, &hRotSet);
   size = sizeof(LabDriver_settings.Rot_position);
   db_open_record(hDB, hRotSet, &LabDriver_settings.Rot_position, size, MODE_READ, seq_rotation_callback, NULL);
   seq_rotation_callback(hDB, hRotSet, NULL);
   
   
+  // sprintf(var_str, "/Equipment/%s/Variables", eqname);
+  // status = db_create_record(hDB, 0, var_str, strcomb(LabDriver_variables_str));
+  // status = db_find_key(hDB, 0, var_str, &hVar);
+
   sprintf(var_str, "/Equipment/%s/Variables", eqname);
   status = db_create_record(hDB, 0, var_str, strcomb(LabDriver_variables_str));
   status = db_find_key(hDB, 0, var_str, &hVar);
    
-  size=sizeof(LabDriver_settings.LabVar);
-  db_get_record(hDB, hVar, &LabDriver_settings.LabVar, &size, 0);
-   
+  size=sizeof(LabDriver_variables);
+  db_get_record(hDB, hVar, &LabDriver_variables, &size, 0);
+
   //sprintf(var_str, "%s", varname);
   //printf("%s", var_str);
   /*-- Enable Hotlink ------------------------------------------------------------------*/
@@ -419,6 +424,5 @@ INT local_LabDriver_init(char const *eqname)
     size=sizeof(LabDriver_settings.OdbDest);
     db_get_record(hDB, hVar, &LabDriver_settings.OdbDest, &size, 0);
   */
-  return status;
-  
+  return status;  
 }
