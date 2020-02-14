@@ -24,7 +24,7 @@ endif
 
 #--------------------------------------------------------------------
 # The following lines contain specific switches for different UNIX
-# systems. Find the one which matches your OS and outcomment the 
+# systems. Find the one which matches your OS and outcomment the
 # lines below.
 #
 # get OS type from shell
@@ -40,11 +40,11 @@ ifeq ($(OSTYPE),linux)
 #OS_DIR = linux-m64
 OS_DIR = linux
 OSFLAGS = -DOS_LINUX -DLINUX
-CFLAGS = -g -Wall #-fno-omit-frame-pointer 
+CFLAGS = -g -Wall #-fno-omit-frame-pointer
 #CFLAGS = -Wall -O2 -g -Wall -DOS_LINUX -Dextname
 #CFLAGS += -std=c++11 -Wall -O2 -g -I. -I$(INC_DIR) -I$(MIDASSYS)/../mxml/ -I$(DRV_DIR)
 #CFLAGS += $(PGFLAGS)
-LDFLAGS = -g -lm -lz -lutil -lnsl -lpthread -lrt -lc 
+LDFLAGS = -g -lm -lz -lutil -lnsl -lpthread -lrt -lc
 endif
 
 #-----------------------------------------
@@ -117,14 +117,14 @@ LIBCAENDGTZ =-L$(CAENDGTZ_LIB) -lCAENDigitizer
 # All includes
 MIDASINCS = -I. -I$(MIDAS_INC)
 #MIDASINCS = -I. -I./include -I$(MIDAS_INC) -I$(MIDAS_DRV)
-#CAENINCS = -I$(CAENVME_DIR)/include -I$(CAENCOMM_DIR)/include 
-CAENINCS = -I$(CAENCOMM_DIR)/include 
+#CAENINCS = -I$(CAENVME_DIR)/include -I$(CAENCOMM_DIR)/include
+CAENINCS = -I$(CAENCOMM_DIR)/include
 
 ####################################################################
 # General commands
 ####################################################################
 
-all: feTCP.exe feLabview.exe LabViewDriver.exe
+all: feTCP.exe feLabview.exe LabViewDriver.exe LabViewDriver_tmfe.exe
 	@echo "***** Finished"
 	@echo "***** Use 'make doc' to build documentation"
 
@@ -140,10 +140,10 @@ doc ::
 
 #v6533.o : $(MIDAS_DRV)/v1720.c
 #v6533.o : v6533.c
-#	$(CC) -c $(CFLAGS) $(MIDASINCS) $(CAENINCS) $< -o $@ 
+#	$(CC) -c $(CFLAGS) $(MIDASINCS) $(CAENINCS) $< -o $@
 
 #v6533main.o : v6533.c
-#	$(CC) -DMAIN_ENABLE -c $(CFLAGS) $(MIDASINCS) $(CAENINCS) $< -o $@ 
+#	$(CC) -DMAIN_ENABLE -c $(CFLAGS) $(MIDASINCS) $(CAENINCS) $< -o $@
 
 feTCP.o: feTCP.cxx
 	$(CXX) $(CFLAGS) $(OSFLAGS) $(MIDASINCS) $(CAENINCS) -c $< -o $@
@@ -166,6 +166,9 @@ feLabview.exe: $(LIB) feLabview.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp
 LabViewDriver.exe: $(LIB) $(MIDAS_LIB)/mfe.o LabViewDriver.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp.o
 	$(CXX) -o $@ $(CFLAGS) $^ $(LIB) $(LDFLAGS) $(LIBS)
 
+LabViewDriver_tmfe.exe: $(LIB) LabViewDriver_tmfe.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp.o
+	$(CXX) -o $@ $(CFLAGS) $^ $(LIB) $(LDFLAGS) $(LIBS)
+
 #scV6533.exe: $(MIDAS_LIB)/mfe.o  scV6533.o
 #	$(CXX) $(OSFLAGS) scV6533.o $(MIDAS_LIB)/mfe.o -o $@ $(LIBMIDAS) \
 #	$(LIBCAENVME) $(LIBCAENCOMM)  $(LDFLAGS) $(PERFLIBS)
@@ -173,7 +176,10 @@ LabViewDriver.exe: $(LIB) $(MIDAS_LIB)/mfe.o LabViewDriver.o $(MIDAS_LIB)/mvodb.
 LabViewDriver.o : LabViewDriver.cxx
 	$(CXX) $(CFLAGS) $(OSFLAGS) $(MIDASINCS) $(CAENINCS) -c $< -o $@
 
-#v6533main.exe : v6533main.o 
+LabViewDriver_tmfe.o : LabViewDriver_tmfe.cxx
+	$(CXX) $(CFLAGS) $(OSFLAGS) $(MIDASINCS) $(CAENINCS) -c $< -o $@
+
+#v6533main.exe : v6533main.o
 #	$(CC) $(CFLAGS) $(OSFLAGS) $(HWFLAGS) $(MIDASINCS) $(CAENINCS) $< -o $@ \
 #	$(LIBMIDAS) $(LIBCAENCOMM) $(LIBCAENVME) -o $@ $(LDFLAGS) $(PERFLIBS)
 
