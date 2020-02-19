@@ -124,7 +124,7 @@ CAENINCS = -I$(CAENCOMM_DIR)/include
 # General commands
 ####################################################################
 
-all: feTCP.exe feLabview.exe LabViewDriver.exe LabViewDriver_tmfe.exe
+all: feTCP.exe feLabview.exe LabViewDriver.exe
 	@echo "***** Finished"
 	@echo "***** Use 'make doc' to build documentation"
 
@@ -163,10 +163,7 @@ feTCP.exe: $(LIB) feTCP.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp.o
 feLabview.exe: $(LIB) feLabview.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp.o
 	$(CXX) -o $@ $(CFLAGS) $^ $(LIB) $(LDFLAGS) $(LIBS)
 
-LabViewDriver.exe: $(LIB) $(MIDAS_LIB)/mfe.o LabViewDriver.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp.o
-	$(CXX) -o $@ $(CFLAGS) $^ $(LIB) $(LDFLAGS) $(LIBS)
-
-LabViewDriver_tmfe.exe: $(LIB) LabViewDriver_tmfe.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp.o
+LabViewDriver.exe: $(LIB) LabViewDriver.o $(MIDAS_LIB)/mvodb.o $(MIDAS_LIB)/tmfe.o KOtcp.o
 	$(CXX) -o $@ $(CFLAGS) $^ $(LIB) $(LDFLAGS) $(LIBS)
 
 #scV6533.exe: $(MIDAS_LIB)/mfe.o  scV6533.o
@@ -174,9 +171,6 @@ LabViewDriver_tmfe.exe: $(LIB) LabViewDriver_tmfe.o $(MIDAS_LIB)/mvodb.o $(MIDAS
 #	$(LIBCAENVME) $(LIBCAENCOMM)  $(LDFLAGS) $(PERFLIBS)
 
 LabViewDriver.o : LabViewDriver.cxx
-	$(CXX) $(CFLAGS) $(OSFLAGS) $(MIDASINCS) $(CAENINCS) -c $< -o $@
-
-LabViewDriver_tmfe.o : LabViewDriver_tmfe.cxx
 	$(CXX) $(CFLAGS) $(OSFLAGS) $(MIDASINCS) $(CAENINCS) -c $< -o $@
 
 #v6533main.exe : v6533main.o
