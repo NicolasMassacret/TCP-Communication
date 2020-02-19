@@ -137,70 +137,71 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
    KEY key;
    int status = db_get_key(hDB, hkey, &key);
    char reqstr[256];
-   switch(key.type){
-   case TID_BOOL:
-      {
-         bool val;
-         int size = sizeof(val);
-         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-         sprintf(reqstr, (val?"true":"false"));
-         break;
+   if(status == DB_SUCCESS){
+      switch(key.type){
+      case TID_BOOL:
+         {
+            bool val;
+            int size = sizeof(val);
+            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+            sprintf(reqstr, (val?"true":"false"));
+            break;
+         }
+      case TID_INT:
+         {
+            int val;
+            int size = sizeof(val);
+            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+            sprintf(reqstr, "%d", val);
+            break;
+         }
+      case TID_DOUBLE:
+         {
+            double val;
+            int size = sizeof(val);
+            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+            sprintf(reqstr, "%f", val);
+            settings.Rot_position = val;
+            break;
+         }
+      case TID_FLOAT:
+         {
+            float val;
+            int size = sizeof(val);
+            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+            sprintf(reqstr, "%f", val);
+            settings.Rot_position = val;
+            break;
+         }
+      case TID_STRING:
+         {
+            int size = 256;
+            db_get_data(hDB, hkey, (void*)&reqstr, &size, key.type);
+            break;
+         }
+      case TID_WORD:
+         {
+            uint16_t val;
+            int size = sizeof(val);
+            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+            sprintf(reqstr, "%d", val);
+            break;
+         }
+      case TID_DWORD:
+         {
+            uint32_t val;
+            int size = sizeof(val);
+            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+            sprintf(reqstr, "%d", val);
+            break;
+         }
       }
-   case TID_INT:
-      {
-         int val;
-         int size = sizeof(val);
-         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-         sprintf(reqstr, "%d", val);
-         break;
-      }
-   case TID_DOUBLE:
-      {
-         double val;
-         int size = sizeof(val);
-         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-         sprintf(reqstr, "%f", val);
-         settings.Rot_position = val;
-         break;
-      }
-   case TID_FLOAT:
-      {
-         float val;
-         int size = sizeof(val);
-         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-         sprintf(reqstr, "%f", val);
-         settings.Rot_position = val;
-         break;
-      }
-   case TID_STRING:
-      {
-         int size = 256;
-         db_get_data(hDB, hkey, (void*)&reqstr, &size, key.type);
-         break;
-      }
-   case TID_WORD:
-      {
-         uint16_t val;
-         int size = sizeof(val);
-         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-         sprintf(reqstr, "%d", val);
-         break;
-      }
-   case TID_DWORD:
-      {
-         uint32_t val;
-         int size = sizeof(val);
-         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-         sprintf(reqstr, "%d", val);
-         break;
-      }
+      cm_msg(MINFO, "callback", "Change requested: %s [ %d ] -> %s\n", key.name, index, reqstr);
+
+      std::ostringstream oss;
+      oss << "rotation_" << settings.Rot_position << "\r\n";
+      string resp=Exchange(oss.str());
    }
-   cm_msg(MINFO, "callback", "Change requested: %s [ %d ] -> %s\n", key.name, index, reqstr);
-
-   std::ostringstream oss;
-   oss << "rotation_" << settings.Rot_position << "\r\n";
-   string resp=Exchange(oss.str());
-
    // //char respond;
    // std::string respond_str(resp.c_str());
 
@@ -306,7 +307,7 @@ int main(int argc, char* argv[])
    myfe->Init();
    bool connected = myfe->TCPConnect();
    if(!connected){
-      cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%d", myfe->fHostname, myfe->fPortnum);
+      cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%s", myfe->fHostname.c_str(), myfe->fPortnum.c_str());
    }
 
    char rot_set_str[80];
