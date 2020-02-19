@@ -140,7 +140,7 @@ public TMFeRpcHandlerInterface,
                     cerr << err.message << endl;
                     return resp;
                 }
-                err = tcp->ReadString(&resp,1024);
+                err = tcp->ReadString(&resp,4096);
                 if(err.error){
                     cerr << err.message << endl;
                     return resp;

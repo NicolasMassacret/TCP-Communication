@@ -1,7 +1,7 @@
 //
-// fetest_tmfe.cxx
+// LabViewDriver
 //
-// Frontend for test and example of tmfe c++ frontend
+// Frontend for interfacing with LabView over TCP
 //
 
 #include <stdio.h>
@@ -115,6 +115,14 @@ public:
 
    void fecallback(HNDLE hDB, HNDLE hkey, INT index);
    INT read_event();
+
+   bool Handshake(){
+      cout << "HANDSHAKE" << endl;
+      string resp = Exchange("MIDAS\r\n");
+      bool correct = (resp.substr(0,7) == string("LabView"));
+      if(!correct) fMfe->Msg(MERROR, "Handshake", "Unexpected response: %s", resp.c_str());
+      return correct;
+   }
 private:
    // INT read_event(char *pevent, INT off);
    typedef struct {
@@ -306,6 +314,7 @@ int main(int argc, char* argv[])
 
    myfe->Init();
    bool connected = myfe->TCPConnect();
+   if(connected) connected = myfe->Handshake();
    if(!connected){
       cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%s", myfe->fHostname.c_str(), myfe->fPortnum.c_str());
    }
