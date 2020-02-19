@@ -62,11 +62,15 @@ public:
       }
       fEventBuf = (char*)malloc(fEventSize);
 
+      settings.LabVar.resize(NCH);
+      settings.names.resize(NCH);
+      variables.resize(NCH);
       fEq->fOdbEqSettings->RSA("LabV_monitored_variables", &settings.LabVar, true, NCH);
       fEq->fOdbEqSettings->RB("Dynamic_mode", &settings.dynamic, true);
       fEq->fOdbEqSettings->RF("Rotation_position", &settings.Rot_position, true);
       fEq->fOdbEqSettings->RF("Translation_position", &settings.Trans_position, true);
       fEq->fOdbEqVariables->RDA("LabV_var_val", &variables, true, NCH);
+
    }
 
    void SendEvent(double dvalue)
@@ -101,16 +105,18 @@ public:
 
    void HandlePeriodic()
    {
-      printf("periodic!\n");
+      // printf("periodic!\n");
+      read_event();
       //char buf[256];
       //sprintf(buf, "buffered %d (max %d), dropped %d, unknown %d, max flushed %d", gUdpPacketBufSize, fMaxBuffered, fCountDroppedPackets, fCountUnknownPackets, fMaxFlushed);
       //fEq->SetStatus(buf, "#00FF00");
       //fEq->WriteStatistics();
    }
 
-
+   void fecallback(HNDLE hDB, HNDLE hkey, INT index);
+   INT read_event();
 private:
-   INT read_event(char *pevent, INT off);
+   // INT read_event(char *pevent, INT off);
    typedef struct {
       string      hostname;
       string    port;
@@ -126,35 +132,101 @@ private:
    vector<double> variables;
 };
 
-INT feLabview::read_event(char *pevent, INT off)
+void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
 {
-   /* init bank structure */
+   KEY key;
+   int status = db_get_key(hDB, hkey, &key);
+   char reqstr[256];
+   switch(key.type){
+   case TID_BOOL:
+      {
+         bool val;
+         int size = sizeof(val);
+         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+         sprintf(reqstr, (val?"true":"false"));
+         break;
+      }
+   case TID_INT:
+      {
+         int val;
+         int size = sizeof(val);
+         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+         sprintf(reqstr, "%d", val);
+         break;
+      }
+   case TID_DOUBLE:
+      {
+         double val;
+         int size = sizeof(val);
+         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+         sprintf(reqstr, "%f", val);
+         settings.Rot_position = val;
+         break;
+      }
+   case TID_FLOAT:
+      {
+         float val;
+         int size = sizeof(val);
+         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+         sprintf(reqstr, "%f", val);
+         settings.Rot_position = val;
+         break;
+      }
+   case TID_STRING:
+      {
+         int size = 256;
+         db_get_data(hDB, hkey, (void*)&reqstr, &size, key.type);
+         break;
+      }
+   case TID_WORD:
+      {
+         uint16_t val;
+         int size = sizeof(val);
+         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+         sprintf(reqstr, "%d", val);
+         break;
+      }
+   case TID_DWORD:
+      {
+         uint32_t val;
+         int size = sizeof(val);
+         db_get_data(hDB, hkey, (void*)&val, &size, key.type);
+         sprintf(reqstr, "%d", val);
+         break;
+      }
+   }
+   cm_msg(MINFO, "callback", "Change requested: %s [ %d ] -> %s\n", key.name, index, reqstr);
 
+   std::ostringstream oss;
+   oss << "rotation_" << settings.Rot_position << "\r\n";
+   string resp=Exchange(oss.str());
 
+   // //char respond;
+   // std::string respond_str(resp.c_str());
 
-   int  size;
-   float value;
+   // printf("Value returned: %s \n", respond_str.c_str());
+}
+
+// INT feLabview::read_event(char *pevent, INT off)
+INT feLabview::read_event()
+{
+   double value;
 
    if(settings.dynamic==true)
       {
          /*Update variables to monitor and destination in ODB*/
-         // char monitored_var_str[80];
-         // sprintf(monitored_var_str, "/Equipment/%s/Settings/LabV_monitored_variables", fMfe->fFrontendName);
-         // db_find_key(hDB, 0, monitored_var_str, &hVar);
-         // size=sizeof(settings.LabVar);
-         // db_get_record(hDB, hVar, &settings.LabVar, &size, 0);
          fEq->fOdbEqSettings->RSA("LabV_monitored_variables", &settings.LabVar, true, NCH);
       }
 
    /*Read variables and write their value in ODB*/
-   for(int a=0; a<settings.LabVar.size(); a++)
+   for(unsigned int a=0; a<settings.LabVar.size(); a++)
       {
          if(settings.LabVar[a].size())
             {
-               //printf("Reading variable : %s \n", LabDriver_settings.LabVar[a]);
+               // printf("Reading variable : %s \n", settings.LabVar[a].c_str());
                string resp=Exchange(string("read_")+settings.LabVar[a]+"\r\n");
                try{
-                  value = std::stof(resp);
+                  value = std::stod(resp);
                }
                catch (const std::invalid_argument& ia){
                   value=-99999;
@@ -163,27 +235,11 @@ INT feLabview::read_event(char *pevent, INT off)
 
                printf("Value returned: %f \n", value);
 
-               // sprintf(destination_var_str, "/Equipment/%s/Variables/LabV_var_val", fMfe->fFrontendName);
-               // db_find_key(hDB, 0, destination_var_str, &hVar);
-               // size=sizeof(variables);
-               // db_get_record(hDB, hVar, &variables, &size, 0);
                variables[a]=value;
-               // db_set_value(hDB, 0, destination_var_str, variables, sizeof(variables), NCH, TID_FLOAT);
-
             }
       }
    fEq->fOdbEqVariables->WDA("LabV_var_val", variables);
 
-   // // /* Write data bank*/
-   // bk_init(pevent);
-   // float *pfdata;
-   // bk_create(pevent, "VLAB", TID_FLOAT, (void **)&pfdata);
-   // for (int i=0; i<NCH; i++) {
-   //    *pfdata++ = (float) (variables[i]);
-   // }
-   // bk_close(pevent, pfdata);
-
-   // return bk_size(pevent);
    return 0;
 }
 
@@ -191,6 +247,13 @@ static void usage()
 {
    fprintf(stderr, "Usage: LabViewDriver_tmfe.exe <name> ...\n");
    exit(1);
+}
+
+void callback(INT hDB, INT hkey, INT index, void *feptr)
+{
+   cout << "CALLBACK" << endl;
+   feLabview* fe = (feLabview*)feptr;
+   fe->fecallback(hDB, hkey, index);
 }
 
 int main(int argc, char* argv[])
@@ -210,7 +273,7 @@ int main(int argc, char* argv[])
 
    TMFE* mfe = TMFE::Instance();
 
-   TMFeError err = mfe->Connect("LabViewDriver_tmfe", __FILE__);
+   TMFeError err = mfe->Connect(name.c_str(), __FILE__);
    if (err.error) {
       printf("Cannot connect, bye.\n");
       return 1;
@@ -223,7 +286,7 @@ int main(int argc, char* argv[])
    common->LogHistory = 1;
    //common->Buffer = "SYSTEM";
 
-   TMFeEquipment* eq = new TMFeEquipment(mfe, "LabViewDriver_tmfe", common);
+   TMFeEquipment* eq = new TMFeEquipment(mfe, name.c_str(), common);
    eq->Init();
    eq->SetStatus("Starting...", "white");
    eq->ZeroStatistics();
@@ -232,7 +295,7 @@ int main(int argc, char* argv[])
    mfe->RegisterEquipment(eq);
 
    feLabview* myfe = new feLabview(mfe, eq);
-
+   cout << "myfe = " << myfe << endl;
    mfe->RegisterRpcHandler(myfe);
 
    //mfe->SetTransitionSequenceStart(910);
@@ -241,6 +304,19 @@ int main(int argc, char* argv[])
    //mfe->DeregisterTransitionResume();
 
    myfe->Init();
+   bool connected = myfe->TCPConnect();
+   if(!connected){
+      cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%d", myfe->fHostname, myfe->fPortnum);
+   }
+
+   char rot_set_str[80];
+   HNDLE hkey;
+   sprintf(rot_set_str, "/Equipment/%s/Settings/Rotation_position", name.c_str());
+   int status = db_find_key(mfe->fDB, 0, rot_set_str, &hkey);
+   if (status != DB_SUCCESS) {
+      cm_msg(MERROR, "Init", "Key not found: %s", rot_set_str);
+   }
+   db_watch(mfe->fDB, hkey, callback, (void*)myfe);
 
    mfe->RegisterPeriodicHandler(eq, myfe);
 
