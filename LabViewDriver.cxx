@@ -27,6 +27,22 @@ using std::endl;
 
 #define NCH 12
 
+vector<string> split(const string& str, const string& delim)
+{
+    vector<string> tokens;
+    size_t prev = 0, pos = 0;
+    do
+    {
+        pos = str.find(delim, prev);
+        if (pos == string::npos) pos = str.length();
+        string token = str.substr(prev, pos-prev);
+        if (!token.empty()) tokens.push_back(token);
+        prev = pos + delim.length();
+    }
+    while (pos < str.length() && prev < str.length());
+    return tokens;
+}
+
 class feLabview :
    public feTCP
 {
@@ -123,6 +139,43 @@ public:
       if(!correct) fMfe->Msg(MERROR, "Handshake", "Unexpected response: %s", resp.c_str());
       return correct;
    }
+
+   unsigned int GetVars()
+   {
+      sets.clear(); vars.clear(); stype.clear(); vtype.clear();
+      string resp = Exchange("list_vars");
+      vector<string> tokens = split(resp, "|");
+      for(string s: tokens){
+         char set_or_var = s[0];
+         char ctype = s[1];
+         s.erase(0,2);
+         int type;
+         switch(ctype){
+         case 'b': type = TID_BOOL; break;
+         case 'i': type = TID_INT; break;
+         case 'f': type = TID_FLOAT; break;
+         case 'd': type = TID_DOUBLE; break;
+         case 's': type = TID_STRING; break;
+         default : type = 0; fMfe->Msg(MERROR, "GetVars", "Unsupported data type: %c",  ctype);
+         }
+         if(set_or_var == 'w'){
+            sets.push_back(s);
+            stype.push_back(type);
+         } else if(set_or_var == 'r'){
+            vars.push_back(s);
+            vtype.push_back(type);
+         }
+      }
+      vector<string> odbsets, odbvars;
+      vector<int> odbstid, odbvtid, odbsnum, odbvnum, tsize, isize;
+      fEq->fOdbEqSettings->ReadDir(&odbsets, &odbstid, &odbsnum, &tsize, &isize); // FIXME: function not implememnted!
+      fEq->fOdbEqVariables->ReadDir(&odbvars, &odbvtid, &odbvnum, &tsize, &isize);
+      cout << "odbsets.size() = " << odbsets.size() << endl;
+      for(unsigned int i = 0; i < odbsets.size(); i++){
+         cout << odbsets[i] << '\t' << odbstid[i] << '\t' << odbsnum[i] << endl;
+      }
+      return tokens.size();
+   }
 private:
    // INT read_event(char *pevent, INT off);
    typedef struct {
@@ -137,6 +190,8 @@ private:
    } ldsettings;
    ldsettings settings;
 
+   vector<string> vars, sets;
+   vector<int> vtype, stype;
    vector<double> variables;
 };
 
@@ -318,15 +373,16 @@ int main(int argc, char* argv[])
    if(!connected){
       cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%s", myfe->fHostname.c_str(), myfe->fPortnum.c_str());
    }
+   myfe->GetVars();
 
-   char rot_set_str[80];
-   HNDLE hkey;
-   sprintf(rot_set_str, "/Equipment/%s/Settings/Rotation_position", name.c_str());
-   int status = db_find_key(mfe->fDB, 0, rot_set_str, &hkey);
-   if (status != DB_SUCCESS) {
-      cm_msg(MERROR, "Init", "Key not found: %s", rot_set_str);
-   }
-   db_watch(mfe->fDB, hkey, callback, (void*)myfe);
+   // char rot_set_str[80];
+   // HNDLE hkey;
+   // sprintf(rot_set_str, "/Equipment/%s/Settings/Rotation_position", name.c_str());
+   // int status = db_find_key(mfe->fDB, 0, rot_set_str, &hkey);
+   // if (status != DB_SUCCESS) {
+   //    cm_msg(MERROR, "Init", "Key not found: %s", rot_set_str);
+   // }
+   // db_watch(mfe->fDB, hkey, callback, (void*)myfe);
 
    mfe->RegisterPeriodicHandler(eq, myfe);
 

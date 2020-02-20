@@ -9,15 +9,13 @@ HOST = 'localhost'	# Symbolic name, meaning all available interfaces
 # HOST = ''	# Symbolic name, meaning all available interfaces
 PORT = 8888	# Arbitrary non-privileged port
 
-vars =
-{
+vars = {
         'rotpos' : 4711,
         'transpos' : 12345,
         'busy' : 1
 }
 
-settings =
-{
+settings = {
         'rotpos' : 0,
         'transpos' : 0,
         'homerot' : 0
@@ -33,6 +31,11 @@ def answer(msg):
                 (cmd,arg) = msg.split('_',2)
                 print cmd, arg
                 if(cmd == "list" and arg == "vars"):
+                        varlist = ""
+                        for key in vars:
+                                varlist = varlist + "|ri" + key
+                        for key in settings:
+                                varlist = varlist + "|wi" + key
                         conn.sendall(varlist)
                 elif(cmd == "read"):
                         val = 4711
