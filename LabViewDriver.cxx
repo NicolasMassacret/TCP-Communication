@@ -11,6 +11,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <algorithm>
 #include <stdexcept>
 
 #include "midas.h"
@@ -41,6 +42,12 @@ vector<string> split(const string& str, const string& delim)
     }
     while (pos < str.length() && prev < str.length());
     return tokens;
+}
+
+int add_key(HNDLE hDB, HNDLE hkey, KEY *key, INT level, void *pvector){
+   if(key->type != TID_KEY)
+      ((vector<KEY>*)pvector)->push_back(*key);
+   return DB_SUCCESS;
 }
 
 class feLabview :
@@ -144,35 +151,77 @@ public:
    {
       sets.clear(); vars.clear(); stype.clear(); vtype.clear();
       string resp = Exchange("list_vars");
-      vector<string> tokens = split(resp, "|");
+      vector<string> tokens = split(resp, "_");
       for(string s: tokens){
          char set_or_var = s[0];
          char ctype = s[1];
          s.erase(0,2);
          int type;
          switch(ctype){
-         case 'b': type = TID_BOOL; break;
-         case 'i': type = TID_INT; break;
-         case 'f': type = TID_FLOAT; break;
-         case 'd': type = TID_DOUBLE; break;
-         case 's': type = TID_STRING; break;
+         case 'B': type = TID_BOOL; break;
+         case 'I': type = TID_INT; break;
+         case 'F': type = TID_FLOAT; break;
+         case 'D': type = TID_DOUBLE; break;
+         case 'S': type = TID_STRING; break;
          default : type = 0; fMfe->Msg(MERROR, "GetVars", "Unsupported data type: %c",  ctype);
          }
-         if(set_or_var == 'w'){
+         if(set_or_var == 'W'){
             sets.push_back(s);
             stype.push_back(type);
-         } else if(set_or_var == 'r'){
+         } else if(set_or_var == 'R'){
             vars.push_back(s);
             vtype.push_back(type);
          }
       }
       vector<string> odbsets, odbvars;
-      vector<int> odbstid, odbvtid, odbsnum, odbvnum, tsize, isize;
-      fEq->fOdbEqSettings->ReadDir(&odbsets, &odbstid, &odbsnum, &tsize, &isize); // FIXME: function not implememnted!
-      fEq->fOdbEqVariables->ReadDir(&odbvars, &odbvtid, &odbvnum, &tsize, &isize);
+      vector<int> odbstid, odbvtid;
+      vector<KEY> odbsetkeys, odbvarkeys;
+      char tmpbuf[80];
+      sprintf(tmpbuf, "/Equipment/%s/Settings", fMfe->fFrontendName.c_str());
+      HNDLE odbs, odbv;
+      db_find_key(fMfe->fDB, 0, tmpbuf, &odbs);
+      sprintf(tmpbuf, "/Equipment/%s/Variables", fMfe->fFrontendName.c_str());
+      db_find_key(fMfe->fDB, 0, tmpbuf, &odbv);
+      db_scan_tree(fMfe->fDB, odbs, 0, add_key, (void*)&odbsetkeys);
+      db_scan_tree(fMfe->fDB, odbv, 0, add_key, (void*)&odbvarkeys);
+      for(KEY key: odbsetkeys){
+         odbsets.push_back(key.name);
+         odbstid.push_back(key.type);
+      }
+      for(KEY key: odbvarkeys){
+         odbvars.push_back(key.name);
+         odbvtid.push_back(key.type);
+      }
+      // fEq->fOdbEqSettings->ReadDir(&odbsets, &odbstid, &odbsnum, &tsize, &isize); // FIXME: function not implememnted!
+      // fEq->fOdbEqVariables->ReadDir(&odbvars, &odbvtid, &odbvnum, &tsize, &isize);
       cout << "odbsets.size() = " << odbsets.size() << endl;
       for(unsigned int i = 0; i < odbsets.size(); i++){
-         cout << odbsets[i] << '\t' << odbstid[i] << '\t' << odbsnum[i] << endl;
+         cout << odbsets[i] << '\t' << odbstid[i] << endl;
+      }
+      for(unsigned int i = 0; i < odbvars.size(); i++){
+         cout << odbvars[i] << '\t' << odbvtid[i] << endl;
+      }
+      if(odbsets == sets) cout << "Settings match!" << endl;
+      else {
+         cout << "Settings don't match!" << endl;
+         for(string s: sets) cout << s << '\t';
+         cout <<  endl;
+         for(string s: odbsets) cout << s << '\t';
+         cout <<  endl;
+      }
+      for(unsigned int i = 0; i < sets.size(); i++){
+         bool found = false;
+         vector<string>::iterator it = std::find(odbsets.begin(), odbsets.end(), sets[i]);
+         if(it != odbsets.end()){
+            unsigned int j = distance(odbsets.begin(), it);
+            if(stype[i] == odbstid[j]) found = true;
+            else {
+               // delete key here
+            }
+         }
+         if(!found){
+            // create key here
+         }
       }
       return tokens.size();
    }
