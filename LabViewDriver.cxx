@@ -216,11 +216,40 @@ public:
             unsigned int j = distance(odbsets.begin(), it);
             if(stype[i] == odbstid[j]) found = true;
             else {
-               // delete key here
+               // don't want to delete keys automatically
             }
          }
          if(!found){
             // create key here
+         }
+      }
+      for(unsigned int i = 0; i < vars.size(); i++){
+         bool found = false;
+         vector<string>::iterator it = std::find(odbvars.begin(), odbvars.end(), vars[i]);
+         if(it != odbvars.end()){
+            unsigned int j = distance(odbvars.begin(), it);
+            if(vtype[i] == odbvtid[j]) found = true;
+            else {
+               // don't want to delete keys automatically
+            }
+         }
+         if(!found){
+            // create key here
+         }
+      }
+      bool orphans = false;
+      for(string s: odbsets){
+         vector<string>::iterator it = std::find(sets.begin(), sets.end(), s);
+         if(it == sets.end()){
+            orphans = true;
+            // message
+         }
+      }
+      for(string s: odbvars){
+         vector<string>::iterator it = std::find(vars.begin(), vars.end(), s);
+         if(it == vars.end()){
+            orphans = true;
+            // message
          }
       }
       return tokens.size();
