@@ -10,36 +10,45 @@ HOST = 'localhost'	# Symbolic name, meaning all available interfaces
 PORT = 8888	# Arbitrary non-privileged port
 
 vars = {
-        'rotpos' : 4711,
-        'transpos' : 12345,
-        'busy' : 1
+        'RDRotPos' : 4711,
+        'RDTransPos' : 12345,
+        'RBBusy' : 1
 }
 
 settings = {
-        'rotpos' : 0,
-        'transpos' : 0,
-        'homerot' : 0
+        'WDRotPos' : 0,
+        'WDTransPos' : 0,
+        'WBHomeRot' : 0
 }
 
 
 def answer(msg):
         msg = msg.strip("\r\n ")
         print >>sys.stderr, 'received "%s"' % msg
-        if(msg == "MIDAS"):
-                conn.sendall("LabView(fake)")
+        if(msg == "midas"):
+                conn.sendall("labview(fake)\r\n")
         else:
                 (cmd,arg) = msg.split('_',2)
                 print cmd, arg
                 if(cmd == "list" and arg == "vars"):
                         varlist = ""
                         for key in vars:
-                                varlist = varlist + "|ri" + key
+                                varlist = varlist + "_" + key
                         for key in settings:
-                                varlist = varlist + "|wi" + key
-                        conn.sendall(varlist)
-                elif(cmd == "read"):
-                        val = 4711
-                        conn.sendall(str(val))
+                                varlist = varlist + "_" + key
+                        conn.sendall(varlist + "\r\n")
+                elif(arg == "?"):
+                        if(cmd in vars):
+                                conn.sendall(str(vars[cmd]) + "\r\n")
+                        elif(cmd in settings):
+                                conn.sendall(str(settings[cmd]) + "\r\n")
+                        else:
+                                print "Unknown variable:", cmd
+                elif(cmd in settings):
+                        settings[cmd] = arg
+                        print "Changed", cmd, "to", arg
+                else:
+                        print "Unknown command:", cmd
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print 'Socket created'

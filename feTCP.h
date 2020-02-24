@@ -131,7 +131,7 @@ public TMFeRpcHandlerInterface,
         }
     }
 
-    string Exchange(string message){
+    string Exchange(string message, bool expect_reply = true){
         string resp;
         if(tcp){
             if(tcp->fConnected){
@@ -140,10 +140,12 @@ public TMFeRpcHandlerInterface,
                     cerr << err.message << endl;
                     return resp;
                 }
-                err = tcp->ReadString(&resp,4096);
-                if(err.error){
-                    cerr << err.message << endl;
-                    return resp;
+                if(expect_reply){
+                    err = tcp->ReadString(&resp,4096);
+                    if(err.error){
+                        cerr << err.message << endl;
+                        return resp;
+                    }
                 }
             }
         }
