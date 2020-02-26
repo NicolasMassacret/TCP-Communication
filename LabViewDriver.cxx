@@ -325,8 +325,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
             // sprintf(reqstr, (val?"true":"false"));
-            oss << 'B' << key.name << SEPARATOR << int(val) << endl;
-            oss2 << 'B' << key.name << SEPARATOR << '?' << endl;
+            oss << 'B' << key.name << SEPARATOR << int(val) << "\r\n";
+            oss2 << 'B' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             bool rbk = !val;
@@ -341,6 +341,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             }
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
+            } else if(verbose){
+               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
             }
             break;
          }
@@ -350,8 +352,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
             // sprintf(reqstr, "%d", val);
-            oss << 'I' << key.name << SEPARATOR << val << endl;
-            oss2 << 'I' << key.name << SEPARATOR << '?' << endl;
+            oss << 'I' << key.name << SEPARATOR << val << "\r\n";
+            oss2 << 'I' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             int rbk = -99999;
@@ -366,7 +368,10 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             }
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, rbk, val);
+            } else if(verbose){
+               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
             }
+
             break;
          }
       case TID_DOUBLE:
@@ -374,8 +379,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             double val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'D' << key.name << SEPARATOR << val << endl;
-            oss2 << 'D' << key.name << SEPARATOR << '?' << endl;
+            oss << 'D' << key.name << SEPARATOR << val << "\r\n";
+            oss2 << 'D' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             double rbk = -99999;
@@ -390,7 +395,10 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             }
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
+            } else if(verbose){
+               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
             }
+
             break;
          }
       case TID_FLOAT:
@@ -398,8 +406,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             float val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'F' << key.name << SEPARATOR << val << endl;
-            oss2 << 'F' << key.name << SEPARATOR << '?' << endl;
+            oss << 'F' << key.name << SEPARATOR << val << "\r\n";
+            oss2 << 'F' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             float rbk = -99999;
@@ -414,7 +422,10 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             }
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
+            } else if(verbose){
+               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
             }
+
             break;
          }
       case TID_STRING:
@@ -422,14 +433,16 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             char val[256];
             int size = 256;
             db_get_data(hDB, hkey, (void*)val, &size, key.type);
-            oss << 'S' << key.name << SEPARATOR << val << endl;
-            oss2 << 'S' << key.name << SEPARATOR << '?' << endl;
+            oss << 'S' << key.name << SEPARATOR << val << "\r\n";
+            oss2 << 'S' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             vector<string> rv = split(resp, SEPARATOR);
             if(rv.size()==2){
                if(rv[1] != string(val)){
                   cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %s != %s\n", key.name, rv[1].c_str(), val);
+               } else if(verbose){
+                  cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
                }
             }
             break;
@@ -439,8 +452,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             uint16_t val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'B' << key.name << SEPARATOR << int(val);
-            oss2 << 'B' << key.name << SEPARATOR << '?';
+            oss << 'u' << key.name << SEPARATOR << int(val) << "\r\n";
+            oss2 << 'u' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             uint16_t rbk = 0;
@@ -455,7 +468,10 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             }
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
+            } else if(verbose){
+               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
             }
+
             // sprintf(reqstr, "%d", val);
             break;
          }
@@ -464,8 +480,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             uint32_t val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'B' << key.name << SEPARATOR << int(val) << endl;
-            oss2 << 'B' << key.name << SEPARATOR << '?' << endl;
+            oss << 'U' << key.name << SEPARATOR << int(val) << "\r\n";
+            oss2 << 'U' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             uint32_t rbk = 0;
@@ -480,11 +496,14 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             }
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
+            } else if(verbose){
+               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
             }
+
             break;
          }
       }
-      cm_msg(MINFO, "callback", "Change requested: %s\n", oss.str().c_str());
+      if(verbose) cm_msg(MINFO, "callback", "Change requested: %s\n", oss.str().c_str());
    }
    // //char respond;
    // std::string respond_str(resp.c_str());
