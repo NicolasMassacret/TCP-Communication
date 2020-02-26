@@ -120,6 +120,9 @@ public TMFeRpcHandlerInterface,
         //char portstr[8];
         //sprintf(portstr,"%d",fPortnum);
         tcp = new KOtcpConnection(fHostname.c_str(),fPortnum.c_str());
+        tcp->fConnectTimeoutMilliSec = 500;
+        tcp->fReadTimeoutMilliSec = 500;
+        tcp->fWriteTimeoutMilliSec = 500;
         //tcp = new KOtcpConnection(fHostname.c_str(), portstr);
         KOtcpError err = tcp->Connect();
         if(err.error){

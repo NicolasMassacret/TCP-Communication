@@ -153,7 +153,7 @@ public:
       string resp = Exchange("midas\r\n");
       bool correct = (resp.substr(0,7) == string("labview"));
       if(!correct) fMfe->Msg(MERROR, "Handshake", "Unexpected response: %s", resp.c_str());
-      else if(verbose) fMfe->Msg(MERROR, "Handshake", "Handshake successful");
+      else if(verbose) fMfe->Msg(MINFO, "Handshake", "Handshake successful");
       return correct;
    }
 
@@ -175,7 +175,8 @@ unsigned int feLabview::GetVars()
 {
    sets.resize(nFixedSettings); vars.resize(nFixedVars);
    stype.resize(nFixedSettings); vtype.resize(nFixedVars);
-   string resp = Exchange("list_vars");
+   string resp = Exchange("list_vars\r\n");
+   cout << "Response: " << resp << "(" << resp.size() << ")" << endl;
    vector<string> tokens = split(resp, SEPARATOR);
    for(string s: tokens){
       char set_or_var = s[0];
@@ -230,8 +231,8 @@ unsigned int feLabview::GetVars()
       }
    }
    if(verbose){
-      if(odbsets == sets) cout << "Settings match!" << endl;
-      else {
+      // if(odbsets == sets) cout << "Settings match!" << endl;
+      // else {
          cout << "Settings don't match!" << endl;
          cout << "LabView:\t";
          for(string s: sets) cout << s << '\t';
@@ -239,7 +240,7 @@ unsigned int feLabview::GetVars()
          cout << "ODB:    \t";
          for(string s: odbsets) cout << s << '\t';
          cout <<  endl;
-      }
+      // }
    }
    for(unsigned int i = 0; i < sets.size(); i++){
       bool found = false;
@@ -329,14 +330,17 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             bool rbk = !val;
-            try{
-               rbk = bool(std::stoi(resp));
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               try{
+                  rbk = bool(std::stoi(rv[1]));
+               }
+               catch (const std::invalid_argument& ia){
+                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+               }
             }
             if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request\n", key.name);
+               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
             }
             break;
          }
@@ -351,14 +355,17 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             int rbk = -99999;
-            try{
-               rbk = std::stoi(resp);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               try{
+                  rbk = std::stoi(rv[1]);
+               }
+               catch (const std::invalid_argument& ia){
+                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+               }
             }
             if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request\n", key.name);
+               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, rbk, val);
             }
             break;
          }
@@ -372,14 +379,17 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             double rbk = -99999;
-            try{
-               rbk = std::stod(resp);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               try{
+                  rbk = std::stod(rv[1]);
+               }
+               catch (const std::invalid_argument& ia){
+                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+               }
             }
             if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request\n", key.name);
+               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
             }
             break;
          }
@@ -393,14 +403,17 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             float rbk = -99999;
-            try{
-               rbk = std::stod(resp);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               try{
+                  rbk = std::stod(rv[1]);
+               }
+               catch (const std::invalid_argument& ia){
+                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+               }
             }
             if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request\n", key.name);
+               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
             }
             break;
          }
@@ -413,8 +426,11 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             oss2 << 'S' << key.name << SEPARATOR << '?' << endl;
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
-            if(resp != string(val)){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request\n", key.name);
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[1] != string(val)){
+                  cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %s != %s\n", key.name, rv[1].c_str(), val);
+               }
             }
             break;
          }
@@ -428,14 +444,17 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             uint16_t rbk = 0;
-            try{
-               rbk = std::stoi(resp);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               try{
+                  rbk = std::stoi(rv[1]);
+               }
+               catch (const std::invalid_argument& ia){
+                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+               }
             }
             if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request\n", key.name);
+               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
             }
             // sprintf(reqstr, "%d", val);
             break;
@@ -450,14 +469,17 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
             uint32_t rbk = 0;
-            try{
-               rbk = std::stoi(resp);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               try{
+                  rbk = std::stoi(rv[1]);
+               }
+               catch (const std::invalid_argument& ia){
+                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+               }
             }
             if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request\n", key.name);
+               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
             }
             break;
          }
@@ -517,13 +539,20 @@ INT feLabview::read_event()
             bool val(false);
             oss << 'B' << vars[i] << "_?\r\n";
             string resp=Exchange(oss.str());
-            try{
-               val = bool(std::stoi(resp));
-               if(verbose) cout << vars[i] << " = " << int(val) << endl;
-               fEq->fOdbEqVariables->WB(vars[i].c_str(), val);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[0].substr(2) == vars[i]){
+                  try{
+                     val = bool(std::stoi(rv[1]));
+                     if(verbose) cout << vars[i] << " = " << int(val) << endl;
+                     fEq->fOdbEqVariables->WB(vars[i].c_str(), val);
+                  }
+                  catch (const std::invalid_argument& ia){
+                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+                  }
+               } else {
+                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
+               }
             }
             break;
          }
@@ -532,13 +561,20 @@ INT feLabview::read_event()
             int val;
             oss << 'I' << vars[i] << "_?\r\n";
             string resp=Exchange(oss.str());
-            try{
-               val = std::stoi(resp);
-               if(verbose) cout << vars[i] << " = " << val << endl;
-               fEq->fOdbEqVariables->WI(vars[i].c_str(), val);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[0].substr(2) == vars[i]){
+                  try{
+                     val = std::stoi(rv[1]);
+                     if(verbose) cout << vars[i] << " = " << val << endl;
+                     fEq->fOdbEqVariables->WI(vars[i].c_str(), val);
+                  }
+                  catch (const std::invalid_argument& ia){
+                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+                  }
+               } else {
+                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
+               }
             }
             break;
          }
@@ -547,13 +583,20 @@ INT feLabview::read_event()
             double val;
             oss << 'D' << vars[i] << "_?\r\n";
             string resp=Exchange(oss.str());
-            try{
-               val = std::stod(resp);
-               if(verbose) cout << vars[i] << " = " << val << endl;
-               fEq->fOdbEqVariables->WD(vars[i].c_str(), val);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[0].substr(2) == vars[i]){
+                  try{
+                     val = std::stod(rv[1]);
+                     if(verbose) cout << vars[i] << " = " << val << endl;
+                     fEq->fOdbEqVariables->WD(vars[i].c_str(), val);
+                  }
+                  catch (const std::invalid_argument& ia){
+                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+                  }
+               } else {
+                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
+               }
             }
             break;
          }
@@ -562,13 +605,20 @@ INT feLabview::read_event()
             float val;
             oss << 'F' << vars[i] << "_?\r\n";
             string resp=Exchange(oss.str());
-            try{
-               val = std::stof(resp);
-               if(verbose) cout << vars[i] << " = " << val << endl;
-               fEq->fOdbEqVariables->WF(vars[i].c_str(), val);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[0].substr(2) == vars[i]){
+                  try{
+                     val = std::stof(rv[1]);
+                     if(verbose) cout << vars[i] << " = " << val << endl;
+                     fEq->fOdbEqVariables->WF(vars[i].c_str(), val);
+                  }
+                  catch (const std::invalid_argument& ia){
+                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+                  }
+               } else {
+                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
+               }
             }
             break;
          }
@@ -576,8 +626,13 @@ INT feLabview::read_event()
          {
             oss << 'S' << vars[i] << "_?\r\n";
             string resp=Exchange(oss.str());
-            if(verbose) cout << vars[i] << " = " << resp << endl;
-            fEq->fOdbEqVariables->WS(vars[i].c_str(), resp.c_str(), resp.size());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[0].substr(2) == vars[i]){
+                  if(verbose) cout << vars[i] << " = " << rv[1] << endl;
+                  fEq->fOdbEqVariables->WS(vars[i].c_str(), rv[1].c_str(), rv[1].size());
+               }
+            }
             break;
          }
       case TID_WORD:
@@ -585,13 +640,20 @@ INT feLabview::read_event()
             uint16_t val;
             oss << 'u' << vars[i] << "_?\r\n";
             string resp=Exchange(oss.str());
-            try{
-               val = std::stoi(resp);
-               if(verbose) cout << vars[i] << " = " << val << endl;
-               fEq->fOdbEqVariables->WU16(vars[i].c_str(), val);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[0].substr(2) == vars[i]){
+                  try{
+                     val = std::stoi(rv[1]);
+                     if(verbose) cout << vars[i] << " = " << val << endl;
+                     fEq->fOdbEqVariables->WU16(vars[i].c_str(), val);
+                  }
+                  catch (const std::invalid_argument& ia){
+                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+                  }
+               } else {
+                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
+               }
             }
             break;
          }
@@ -600,12 +662,19 @@ INT feLabview::read_event()
             uint32_t val;
             oss << 'U' << vars[i] << "_?\r\n";
             string resp=Exchange(oss.str());
-            try{
-               val = std::stoi(resp);
-               fEq->fOdbEqVariables->WU32(vars[i].c_str(), val);
-            }
-            catch (const std::invalid_argument& ia){
-               cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+            vector<string> rv = split(resp, SEPARATOR);
+            if(rv.size()==2){
+               if(rv[0].substr(2) == vars[i]){
+                  try{
+                     val = std::stoi(rv[1]);
+                     fEq->fOdbEqVariables->WU32(vars[i].c_str(), val);
+                  }
+                  catch (const std::invalid_argument& ia){
+                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
+                  }
+               } else {
+                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
+               }
             }
             break;
          }
