@@ -746,7 +746,7 @@ int main(int argc, char* argv[])
 
    mfe->RegisterEquipment(eq);
 
-   feLabview* myfe = new feLabview(mfe, eq);
+   feLabview *myfe = new feLabview(mfe, eq);
    mfe->RegisterRpcHandler(myfe);
 
    //mfe->SetTransitionSequenceStart(910);
@@ -755,13 +755,16 @@ int main(int argc, char* argv[])
    //mfe->DeregisterTransitionResume();
 
    myfe->Init();
+
+   eq->SetStatus("Started...", "white");
+
    bool connected = myfe->TCPConnect();
    if(connected) connected = myfe->Handshake();
    if(!connected){
       cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%s", myfe->fHostname.c_str(), myfe->fPortnum.c_str());
+   } else {
+      myfe->GetVars();
    }
-   myfe->GetVars();
-
    // char rot_set_str[80];
    // HNDLE hkey;
    // sprintf(rot_set_str, "/Equipment/%s/Settings/Rotation_position", name.c_str());
@@ -773,12 +776,16 @@ int main(int argc, char* argv[])
 
    mfe->RegisterPeriodicHandler(eq, myfe);
 
-   eq->SetStatus("Started...", "white");
+   
+   if(connected){
+      std::ostringstream oss;
+      oss << "Connected to " << myfe->fHostname << ':' << myfe->fPortnum;
+      eq->SetStatus(oss.str().c_str(), "lightgreen");
 
-   while (!mfe->fShutdownRequested) {
-      mfe->PollMidas(10);
+      while (!mfe->fShutdownRequested) {
+         mfe->PollMidas(10);
+      }
    }
-
    mfe->Disconnect();
 
    return 0;
