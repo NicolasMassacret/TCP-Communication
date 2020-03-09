@@ -31,18 +31,18 @@ using std::endl;
 
 vector<string> split(const string& str, const string& delim)
 {
-    vector<string> tokens;
-    size_t prev = 0, pos = 0;
-    do
-    {
-        pos = str.find(delim, prev);
-        if (pos == string::npos) pos = str.length();
-        string token = str.substr(prev, pos-prev);
-        if (!token.empty()) tokens.push_back(token);
-        prev = pos + delim.length();
-    }
-    while (pos < str.length() && prev < str.length());
-    return tokens;
+   vector<string> tokens;
+   size_t prev = 0, pos = 0;
+   do
+      {
+         pos = str.find(delim, prev);
+         if (pos == string::npos) pos = str.length();
+         string token = str.substr(prev, pos-prev);
+         if (!token.empty()) tokens.push_back(token);
+         prev = pos + delim.length();
+      }
+   while (pos < str.length() && prev < str.length());
+   return tokens;
 }
 
 int add_key(HNDLE hDB, HNDLE hkey, KEY *key, INT level, void *pvector){
@@ -91,6 +91,8 @@ public:
       stype.push_back(TID_STRING);
       sets.push_back("port");
       stype.push_back(TID_STRING);
+      sets.push_back("apply_on_festart");
+      stype.push_back(TID_BOOL);
 
       nFixedSettings = sets.size();
       nFixedVars = vars.size();
@@ -159,6 +161,15 @@ public:
 
    unsigned int GetVars();
 private:
+   int TypeConvert(const char c);
+   char TypeConvert(const int t);
+   enum varset { var, set };
+   template <class T>
+   bool ReadLVVar(const varset vs, const string name, const int type, T &retval);
+   template <class T>
+   bool WriteLVSet(const string name, const int type, const T val, bool confirm = true);
+   template <class T>
+   void WriteODB(const varset vs, const string name, const int type, const T val);
    vector<string> vars, sets;
    vector<int> vtype, stype;
    unsigned int nFixedSettings, nFixedVars;
@@ -169,6 +180,90 @@ void callback(INT hDB, INT hkey, INT index, void *feptr)
 {
    feLabview* fe = (feLabview*)feptr;
    fe->fecallback(hDB, hkey, index);
+}
+
+int feLabview::TypeConvert(const char ctype)
+{
+   switch(ctype){
+   case 'B': return TID_BOOL; break;
+   case 'I': return TID_INT; break;
+   case 'F': return TID_FLOAT; break;
+   case 'D': return TID_DOUBLE; break;
+   case 'S': return TID_STRING; break;
+   case 'u': return TID_WORD; break;
+   case 'U': return TID_DWORD; break;
+   default : fMfe->Msg(MERROR, "TypeConvert", "Unsupported data type: %c",  ctype); return 0; 
+   }
+}
+
+char feLabview::TypeConvert(const int type)
+{
+   switch(type){
+   case TID_BOOL:   return 'B'; break;
+   case TID_INT:    return 'I'; break;
+   case TID_FLOAT:  return 'F'; break;
+   case TID_DOUBLE: return 'D'; break;
+   case TID_STRING: return 'S'; break;
+   case TID_WORD:   return 'u'; break;
+   case TID_DWORD:  return 'U'; break;
+   default: return 'X';         // this shouldn't occur
+   }
+}
+
+template <class T>
+bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T &retval)
+{
+   std::ostringstream oss;
+   if(vs == var) oss << 'R';
+   else if(vs == set) oss << 'W';
+   oss << TypeConvert(type);
+   oss << name << "_?\r\n";
+   string resp=Exchange(oss.str());
+   vector<string> rv = split(resp, SEPARATOR);
+   if(rv.size()==2){
+      std::istringstream iss(rv[1]);
+      return(iss >> retval);    // this acts like a boolean, so if the operation fails, returns false
+   }
+   return false;
+}
+
+template <class T>
+bool feLabview::WriteLVSet(const string name, const int type, const T val, bool confirm) // Get val from ODB
+{
+   std::ostringstream oss;
+   oss << 'W';
+   oss << TypeConvert(type);
+   oss << name << '_' << val;
+   Exchange(oss.str());
+   if(confirm){
+      T retval;
+      bool result = ReadLVVar(set, name, type, retval);
+      if(!result){
+         cm_msg(MERROR, "WriteLVSet", "Readback for %s failed\n", name);
+      } else if(retval != val){
+         std::ostringstream oss2;
+         oss2 << "Readback for " << name << " doesn't match request: " << retval << " != " << val;
+         cm_msg(MERROR, "WriteLVSet", oss2.str().c_str());
+      }
+   } else {
+      return true;
+   }
+}
+
+template <class T>
+void feLabview::WriteODB(const varset vs, const string name, const int type, const T val)
+{
+   MVOdb *db = fEq->fOdbEqVariables;
+   if(vs == set) db = fEq->fOdbEqSettings;
+   switch(type){
+   case TID_BOOL:   db->WB(name, val); break;
+   case TID_INT:    db->WI(name, val); break;
+   case TID_FLOAT:  db->WF(name, val); break;
+   case TID_DOUBLE: db->WD(name, val); break;
+   case TID_STRING: db->WS(name, val.c_str(), val.size()); break;
+   case TID_WORD:   db->WU16(name, val); break;
+   case TID_DWORD:  db->WU32(name, val); break;
+   }
 }
 
 unsigned int feLabview::GetVars()
@@ -182,17 +277,7 @@ unsigned int feLabview::GetVars()
       char set_or_var = s[0];
       char ctype = s[1];
       s.erase(0,2);
-      int type;
-      switch(ctype){
-      case 'B': type = TID_BOOL; break;
-      case 'I': type = TID_INT; break;
-      case 'F': type = TID_FLOAT; break;
-      case 'D': type = TID_DOUBLE; break;
-      case 'S': type = TID_STRING; break;
-      case 'u': type = TID_WORD; break;
-      case 'U': type = TID_DWORD; break;
-      default : type = 0; fMfe->Msg(MERROR, "GetVars", "Unsupported data type: %c",  ctype);
-      }
+      int type = TypeConvert(ctype);
       if(set_or_var == 'W'){
          sets.push_back(s);
          stype.push_back(type);
@@ -233,13 +318,13 @@ unsigned int feLabview::GetVars()
    if(verbose){
       // if(odbsets == sets) cout << "Settings match!" << endl;
       // else {
-         cout << "Settings don't match!" << endl;
-         cout << "LabView:\t";
-         for(string s: sets) cout << s << '\t';
-         cout <<  endl;
-         cout << "ODB:    \t";
-         for(string s: odbsets) cout << s << '\t';
-         cout <<  endl;
+      cout << "Settings don't match!" << endl;
+      cout << "LabView:\t";
+      for(string s: sets) cout << s << '\t';
+      cout <<  endl;
+      cout << "ODB:    \t";
+      for(string s: odbsets) cout << s << '\t';
+      cout <<  endl;
       // }
    }
    for(unsigned int i = 0; i < sets.size(); i++){
@@ -317,7 +402,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
    oss << 'W';
    oss2 << 'W';
 
-   if(status == DB_SUCCESS){
+   if(status == DB_SUCCESS){    // Use template functions here
       switch(key.type){
       case TID_BOOL:
          {
