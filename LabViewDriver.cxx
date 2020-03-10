@@ -9,6 +9,7 @@
 #include <assert.h> // assert()
 #include <stdlib.h> // malloc()
 #include <iostream>
+#include <iomanip>              // to change stream formatting
 #include <sstream>
 #include <string>
 #include <algorithm>
@@ -379,7 +380,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             double val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'D' << key.name << SEPARATOR << val << "\r\n";
+            oss << 'D' << key.name << SEPARATOR << std::fixed << std::setprecision(6) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
+            // oss << 'D' << key.name << SEPARATOR << val << "\r\n"; // FIXME: go back to this once Labview is fixed
             oss2 << 'D' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
@@ -406,7 +408,8 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             float val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'F' << key.name << SEPARATOR << val << "\r\n";
+            oss << 'F' << key.name << SEPARATOR << std::fixed << std::setprecision(6) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
+            // oss << 'F' << key.name << SEPARATOR << val << "\r\n"; // FIXME: go back to this once Labview is fixed
             oss2 << 'F' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
