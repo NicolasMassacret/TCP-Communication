@@ -166,10 +166,13 @@ private:
    enum varset { var, set };
    template <class T>
    bool ReadLVVar(const varset vs, const string name, const int type, T &retval);
+   bool WriteLVSetFromODB(const HNDLE hkey, bool confirm = true);
    template <class T>
    bool WriteLVSet(const string name, const int type, const T val, bool confirm = true);
    template <class T>
    void WriteODB(const varset vs, const string name, const int type, const T val);
+   template <class T>
+   void ReadODB(const varset vs, const string name, const int type, T &retval);
    vector<string> vars, sets;
    vector<int> vtype, stype;
    unsigned int nFixedSettings, nFixedVars;
@@ -222,13 +225,71 @@ bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T 
    vector<string> rv = split(resp, SEPARATOR);
    if(rv.size()==2){
       std::istringstream iss(rv[1]);
-      return(iss >> retval);    // this acts like a boolean, so if the operation fails, returns false
+      if(iss >> retval) return true;    // this acts like a boolean, so if the operation fails, returns false
+      else return false;
    }
    return false;
 }
 
+bool feLabview::WriteLVSetFromODB(const HNDLE hkey, bool confirm)
+{
+   MVOdb *db = fEq->fOdbEqSettings;
+   KEY key;
+   int status = db_get_key(fMfe->fDB, hkey, &key);
+   bool success = !confirm;
+   if(status == DB_SUCCESS){    // Use template functions here
+      switch(key.type){
+      case TID_BOOL:{
+         bool val;
+         db->RB(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_INT:{
+         int val;
+         db->RI(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_FLOAT:{
+         float val;
+         db->RF(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_DOUBLE:{
+         double val;
+         db->RD(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_STRING:{
+         string val;
+         db->RS(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_WORD:{
+         uint16_t val;
+         db->RU16(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_DWORD:{
+         uint32_t val;
+         db->RU32(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      }
+      return success;
+   } else {
+      return false;
+   }
+}
+
 template <class T>
-bool feLabview::WriteLVSet(const string name, const int type, const T val, bool confirm) // Get val from ODB
+bool feLabview::WriteLVSet(const string name, const int type, const T val, bool confirm)
 {
    std::ostringstream oss;
    oss << 'W';
@@ -239,12 +300,13 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
       T retval;
       bool result = ReadLVVar(set, name, type, retval);
       if(!result){
-         cm_msg(MERROR, "WriteLVSet", "Readback for %s failed\n", name);
+         cm_msg(MERROR, "WriteLVSet", "Readback for %s failed\n", name.c_str());
       } else if(retval != val){
          std::ostringstream oss2;
          oss2 << "Readback for " << name << " doesn't match request: " << retval << " != " << val;
-         cm_msg(MERROR, "WriteLVSet", oss2.str().c_str());
+         cm_msg(MERROR, "WriteLVSet", "%s", oss2.str().c_str());
       }
+      return result;
    } else {
       return true;
    }
@@ -263,6 +325,22 @@ void feLabview::WriteODB(const varset vs, const string name, const int type, con
    case TID_STRING: db->WS(name, val.c_str(), val.size()); break;
    case TID_WORD:   db->WU16(name, val); break;
    case TID_DWORD:  db->WU32(name, val); break;
+   }
+}
+
+template <class T>
+void feLabview::ReadODB(const varset vs, const string name, const int type, T &val)
+{
+   MVOdb *db = fEq->fOdbEqVariables;
+   if(vs == set) db = fEq->fOdbEqSettings;
+   switch(type){
+   case TID_BOOL:   db->RB(name, val); break;
+   case TID_INT:    db->RI(name, val); break;
+   case TID_FLOAT:  db->RF(name, val); break;
+   case TID_DOUBLE: db->RD(name, val); break;
+   case TID_STRING: db->RS(name, val); break;
+   case TID_WORD:   db->RU16(name, val); break;
+   case TID_DWORD:  db->RU32(name, val); break;
    }
 }
 
