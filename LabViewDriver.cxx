@@ -9,6 +9,7 @@
 #include <assert.h> // assert()
 #include <stdlib.h> // malloc()
 #include <iostream>
+#include <iomanip>              // to change stream formatting
 #include <sstream>
 #include <string>
 #include <algorithm>
@@ -296,7 +297,11 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
    std::ostringstream oss;
    oss << 'W';
    oss << TypeConvert(type);
-   oss << name << '_' << val;
+   oss << name << '_';
+   if(type == TID_FLOAT || type == TID_DOUBLE){ // FIXME: hack because currently Labview doesn't know how to read scientific notation
+      oss << std::fixed << std::setprecision(6);
+   }
+   oss << val;
    Exchange(oss.str());
    if(confirm){
       T retval;
