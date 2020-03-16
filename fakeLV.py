@@ -39,9 +39,9 @@ def answer(msg):
                         conn.sendall(varlist + "\r\n")
                 elif(arg == "?"):
                         if(cmd in vars):
-                                conn.sendall(str(vars[cmd]) + "\r\n")
+                                conn.sendall(cmd + "_" + str(vars[cmd]) + "\r\n")
                         elif(cmd in settings):
-                                conn.sendall(str(settings[cmd]) + "\r\n")
+                                conn.sendall(cmd + "_" + str(settings[cmd]) + "\r\n")
                         else:
                                 print "Unknown variable:", cmd
                 elif(cmd in settings):

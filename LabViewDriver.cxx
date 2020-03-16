@@ -225,6 +225,7 @@ bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T 
    oss << TypeConvert(type);
    oss << name << "_?\r\n";
    string resp=Exchange(oss.str());
+   if(verbose>1) cout << "Sent: " << oss.str() << "\tReceived: " << resp << endl;
    vector<string> rv = split(resp, SEPARATOR);
    if(rv.size()==2){
       std::istringstream iss(rv[1]);
@@ -312,6 +313,8 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
          std::ostringstream oss2;
          oss2 << "Readback for " << name << " doesn't match request: " << retval << " != " << val;
          cm_msg(MERROR, "WriteLVSet", "%s", oss2.str().c_str());
+      } else if(verbose>1){
+         cout << "Sent: " << oss.str() << "\tReceived: " << retval << endl;
       }
       return result;
    } else {
