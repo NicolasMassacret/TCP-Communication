@@ -343,7 +343,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
             } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
+               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
             }
             break;
          }
@@ -370,7 +370,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, rbk, val);
             } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
+               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
             }
 
             break;
@@ -380,11 +380,12 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             double val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'D' << key.name << SEPARATOR << std::fixed << std::setprecision(6) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
+            oss << 'D' << key.name << SEPARATOR << std::fixed << std::setprecision(16) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
             // oss << 'D' << key.name << SEPARATOR << val << "\r\n"; // FIXME: go back to this once Labview is fixed
             oss2 << 'D' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
             string resp=Exchange(oss2.str());
+            cout << "> >> >> >> >> >> >> >> " << resp << endl;
             double rbk = -99999;
             vector<string> rv = split(resp, SEPARATOR);
             if(rv.size()==2){
@@ -398,7 +399,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
             } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
+               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
             }
 
             break;
@@ -408,7 +409,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             float val;
             int size = sizeof(val);
             db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'F' << key.name << SEPARATOR << std::fixed << std::setprecision(6) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
+            oss << 'F' << key.name << SEPARATOR << std::fixed << std::setprecision(16) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
             // oss << 'F' << key.name << SEPARATOR << val << "\r\n"; // FIXME: go back to this once Labview is fixed
             oss2 << 'F' << key.name << SEPARATOR << '?' << "\r\n";
             Exchange(oss.str(), false);
@@ -426,7 +427,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
             } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
+               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
             }
 
             break;
@@ -445,7 +446,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
                if(rv[1] != string(val)){
                   cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %s != %s\n", key.name, rv[1].c_str(), val);
                } else if(verbose){
-                  cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
+                  cm_msg(MINFO, "fecallback", "Setting changed successfully.");
                }
             }
             break;
@@ -472,7 +473,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
             } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
+               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
             }
 
             // sprintf(reqstr, "%d", val);
@@ -500,7 +501,7 @@ void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
             if(rbk != val){
                cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
             } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed succesfully.");
+               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
             }
 
             break;
@@ -779,7 +780,7 @@ int main(int argc, char* argv[])
 
    mfe->RegisterPeriodicHandler(eq, myfe);
 
-   
+
    if(connected){
       std::ostringstream oss;
       oss << "Connected to " << myfe->fHostname << ':' << myfe->fPortnum;
