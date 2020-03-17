@@ -179,7 +179,7 @@ private:
    vector<string> vars, sets;
    vector<int> vtype, stype;
    unsigned int nFixedSettings, nFixedVars;
-   int verbose = 1;
+   int verbose = 2;
 };
 
 void callback(INT hDB, INT hkey, INT index, void *feptr)
@@ -225,7 +225,7 @@ bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T 
    oss << TypeConvert(type);
    oss << name << "_?\r\n";
    string resp=Exchange(oss.str());
-   if(verbose>1) cout << "Sent: " << oss.str() << "\tReceived: " << resp << endl;
+   if(verbose>2) cout << "Sent: " << oss.str() << "\tReceived: " << resp << endl;
    vector<string> rv = split(resp, SEPARATOR);
    if(rv.size()==2){
       std::istringstream iss(rv[1]);
@@ -300,13 +300,15 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
    oss << TypeConvert(type);
    oss << name << '_';
    if(type == TID_FLOAT || type == TID_DOUBLE){ // FIXME: hack because currently Labview doesn't know how to read scientific notation
-      oss << std::fixed << std::setprecision(6);
+      oss << std::fixed << std::setprecision(16);
    }
    oss << val;
    Exchange(oss.str());
    if(confirm){
       T retval;
-      bool result = ReadLVVar(set, name, type, retval);
+      verbose++;
+      bool result = ReadLVVar(set, name, type, retval); // FIXME: Readback fails somehow
+      verbose--;
       if(!result){
          cm_msg(MERROR, "WriteLVSet", "Readback for %s failed\n", name.c_str());
       } else if(retval != val){
@@ -420,16 +422,16 @@ unsigned int feLabview::GetVars()
       }
    }
    if(verbose){
-      // if(odbsets == sets) cout << "Settings match!" << endl;
-      // else {
-      cout << "Settings don't match!" << endl;
-      cout << "LabView:\t";
-      for(string s: sets) cout << s << '\t';
-      cout <<  endl;
-      cout << "ODB:    \t";
-      for(string s: odbsets) cout << s << '\t';
-      cout <<  endl;
-      // }
+      if(odbsets == sets) cout << "Settings match!" << endl;
+      else {
+         cout << "Settings don't match!" << endl; // FIXME: this doesn't actually check.
+         cout << "LabView:\t";
+         for(string s: sets) cout << s << '\t';
+         cout <<  endl;
+         cout << "ODB:    \t";
+         for(string s: odbsets) cout << s << '\t';
+         cout <<  endl;
+      }
    }
    for(unsigned int i = 0; i < sets.size(); i++){
       bool found = false;
