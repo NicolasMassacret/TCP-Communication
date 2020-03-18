@@ -14,6 +14,7 @@
 #include <string>
 #include <algorithm>
 #include <stdexcept>
+#include <set>
 
 #include "midas.h"
 #include "tmfe.h"
@@ -303,11 +304,17 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
       oss << std::fixed << std::setprecision(16);
    }
    oss << val;
-   Exchange(oss.str());
+   Exchange(oss.str(), false);
    if(confirm){
+      // usleep(1000000);
       T retval;
       verbose++;
       bool result = ReadLVVar(set, name, type, retval); // FIXME: Readback fails somehow
+      int count = 0;
+      while(!result && count < 3){
+         result = ReadLVVar(set, name, type, retval); // FIXME: second attempt usually works
+         count++;
+      }
       verbose--;
       if(!result){
          cm_msg(MERROR, "WriteLVSet", "Readback for %s failed\n", name.c_str());
@@ -424,13 +431,17 @@ unsigned int feLabview::GetVars()
    if(verbose){
       if(odbsets == sets) cout << "Settings match!" << endl;
       else {
-         cout << "Settings don't match!" << endl; // FIXME: this doesn't actually check.
-         cout << "LabView:\t";
-         for(string s: sets) cout << s << '\t';
-         cout <<  endl;
-         cout << "ODB:    \t";
-         for(string s: odbsets) cout << s << '\t';
-         cout <<  endl;
+         std::set<string> sodbsets(odbsets.begin(), odbsets.end()), ssets(sets.begin(), sets.end()); // Using set so they're ordered
+         if(sodbsets == ssets) cout << "Settings match!" << endl;
+         else {
+            cout << "Settings don't match!" << endl;
+            cout << "LabView:\t";
+            for(string s: ssets) cout << s << '\t';
+            cout <<  endl;
+            cout << "ODB:    \t";
+            for(string s: sodbsets) cout << s << '\t';
+            cout <<  endl;
+         }
       }
    }
    for(unsigned int i = 0; i < sets.size(); i++){
