@@ -70,12 +70,6 @@ class feLabview :
    public feTCP
 {
 public:
-   TMFE* fMfe;
-   TMFeEquipment* fEq;
-
-   int fEventSize;
-   char* fEventBuf;
-
    feLabview(TMFE* mfe /**< [in]  Midas frontend interfacing class. */,
              TMFeEquipment* eq /**< [in]  Midas equipment class. */):feTCP(mfe, eq) // ctor
    {
@@ -83,14 +77,6 @@ public:
       fEq  = eq;
       fEventSize = 0;
       fEventBuf  = NULL;
-   }
-
-   ~feLabview() // dtor
-   {
-      if (fEventBuf) {
-         free(fEventBuf);
-         fEventBuf = NULL;
-      }
    }
 
    /** \brief Variable initialization. */
@@ -111,51 +97,41 @@ public:
 
       nFixedSettings = sets.size();
       nFixedVars = vars.size();
-
-      // settings.LabVar.resize(NCH);
-      // settings.names.resize(NCH);
-      // variables.resize(NCH);
-      // fEq->fOdbEqSettings->RSA("LabV_monitored_variables", &settings.LabVar, true, NCH);
-      // fEq->fOdbEqSettings->RB("Dynamic_mode", &settings.dynamic, true);
-      // fEq->fOdbEqSettings->RF("Rotation_position", &settings.Rot_position, true);
-      // fEq->fOdbEqSettings->RF("Translation_position", &settings.Trans_position, true);
-      // fEq->fOdbEqVariables->RDA("LabV_var_val", &variables, true, NCH);
-
    }
 
-   /** \brief Midas event creation \b UNUSED. */
-   void SendEvent(double dvalue)
-   {
-      fEq->ComposeEvent(fEventBuf, fEventSize);
-      fEq->BkInit(fEventBuf, fEventSize);
+   // /* \brief Midas event creation \b UNUSED. */
+   // void SendEvent(double dvalue)
+   // {
+   //    fEq->ComposeEvent(fEventBuf, fEventSize);
+   //    fEq->BkInit(fEventBuf, fEventSize);
 
-      double* ptr = (double*)fEq->BkOpen(fEventBuf, "test", TID_DOUBLE);
-      *ptr = dvalue;
-      fEq->BkClose(fEventBuf, ptr+1);
+   //    double* ptr = (double*)fEq->BkOpen(fEventBuf, "test", TID_DOUBLE);
+   //    *ptr = dvalue;
+   //    fEq->BkClose(fEventBuf, ptr+1);
 
-      fEq->SendEvent(fEventBuf);
-   }
+   //    fEq->SendEvent(fEventBuf);
+   // }
 
-   /** \brief JSON rpc interface <b>CURRENTLY UNUSED</b>. */
-   std::string HandleRpc(const char* cmd, const char* args)
-   {
-      fMfe->Msg(MINFO, "HandleRpc", "RPC cmd [%s], args [%s]", cmd, args);
-      return "OK";
-   }
+   // /* \brief JSON rpc interface <b>CURRENTLY UNUSED</b>. */
+   // std::string HandleRpc(const char* cmd, const char* args)
+   // {
+   //    fMfe->Msg(MINFO, "HandleRpc", "RPC cmd [%s], args [%s]", cmd, args);
+   //    return "OK";
+   // }
 
-   /** \brief Begin-of-Run operations <b>CURRENTLY UNUSED</b>. */
-   void HandleBeginRun()
-   {
-      fMfe->Msg(MINFO, "HandleBeginRun", "Begin run!");
-      fEq->SetStatus("Running", "#00FF00");
-   }
+   // /* \brief Begin-of-Run operations <b>CURRENTLY UNUSED</b>. */
+   // void HandleBeginRun()
+   // {
+   //    fMfe->Msg(MINFO, "HandleBeginRun", "Begin run!");
+   //    fEq->SetStatus("Running", "#00FF00");
+   // }
 
-   /** \brief End-of-Run operations <b>CURRENTLY UNUSED</b>. */
-   void HandleEndRun()
-   {
-      fMfe->Msg(MINFO, "HandleEndRun", "End run!");
-      fEq->SetStatus("Stopped", "#00FF00");
-   }
+   // /* \brief End-of-Run operations <b>CURRENTLY UNUSED</b>. */
+   // void HandleEndRun()
+   // {
+   //    fMfe->Msg(MINFO, "HandleEndRun", "End run!");
+   //    fEq->SetStatus("Stopped", "#00FF00");
+   // }
 
    /** \brief Periodic operations, reading variables from LabView. */
    void HandlePeriodic()
@@ -170,8 +146,18 @@ public:
 
    /** \brief Function called on ODB setting change, sending variables to LabView. */
    void fecallback(HNDLE hDB, HNDLE hkey, INT index);
-   INT read_event();
 
+   /** \brief Connect to LabView and confirm identity. */
+   bool LVConnect()
+   {
+      bool success = TCPConnect();
+      if(success) success = Handshake();
+      return success;
+   }
+
+   /** \brief Request list of variables from LabView, populate ODB. */
+   unsigned int GetVars();
+private:
    /** \brief Confirm server we're talking to is actually LabView. */
    bool Handshake(){
       string resp = Exchange("midas\r\n");
@@ -180,10 +166,7 @@ public:
       else if(verbose) fMfe->Msg(MINFO, "Handshake", "Handshake successful");
       return correct;
    }
-
-   /** \brief Request list of variables from LabView, populate ODB. */
-   unsigned int GetVars();
-private:
+   INT read_event();
    vector<string> vars, sets;
    vector<int> vtype, stype;
    unsigned int nFixedSettings, nFixedVars;
@@ -786,8 +769,7 @@ int main(int argc, char* argv[])
 
    eq->SetStatus("Started...", "white");
 
-   bool connected = myfe->TCPConnect();
-   if(connected) connected = myfe->Handshake();
+   bool connected = myfe->LVConnect();
    if(!connected){
       cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%s", myfe->fHostname.c_str(), myfe->fPortnum.c_str());
    } else {
