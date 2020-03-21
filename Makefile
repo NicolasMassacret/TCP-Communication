@@ -124,7 +124,7 @@ CAENINCS = -I$(CAENCOMM_DIR)/include
 # General commands
 ####################################################################
 
-all: feTCP.exe feLabview.exe LabViewDriver.exe
+all: feTCP.exe LabViewDriver.exe
 	@echo "***** Finished"
 	@echo "***** Use 'make doc' to build documentation"
 
