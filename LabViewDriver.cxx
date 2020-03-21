@@ -52,6 +52,20 @@ int add_key(HNDLE hDB, HNDLE hkey, KEY *key, INT level, void *pvector){
    return DB_SUCCESS;
 }
 
+/**
+ * \brief Generic class for TCP/IP communication with LabView server program.
+ * Requests list of readable and writable variables from LabView, then populates ODB
+ *
+ * The idea behind this is that a change in hardware requires only modification of the LabView
+ * program, not the Midas frontend. If LabView adds a new variable since last connection, it will
+ * be added to the ODB. For safety reasons if a variable or setting gets removed from LabView, it does
+ * not automatically get removed from the ODB, just a warning message is issued.
+ *
+ * Some ODB settings are always present, not dependent on the configuration of the LabView server:
+ * @param hostname IP or hostname of the LabView server
+ * @param port port LabView is listening on
+ * @param apply_on_festart \c true to overwrite LabView settings with ODB values, \c false (default) update ODB with current settings from LabView <b>NOT IMPLEMENTED YET</b>
+ */
 class feLabview :
    public feTCP
 {
@@ -62,7 +76,8 @@ public:
    int fEventSize;
    char* fEventBuf;
 
-   feLabview(TMFE* mfe, TMFeEquipment* eq):feTCP(mfe, eq) // ctor
+   feLabview(TMFE* mfe /**< [in]  Midas frontend interfacing class. */,
+             TMFeEquipment* eq /**< [in]  Midas equipment class. */):feTCP(mfe, eq) // ctor
    {
       fMfe = mfe;
       fEq  = eq;
@@ -78,6 +93,7 @@ public:
       }
    }
 
+   /** \brief Variable initialization. */
    void Init()
    {
       // fEventSize = 100;
@@ -107,6 +123,7 @@ public:
 
    }
 
+   /** \brief Midas event creation \b UNUSED. */
    void SendEvent(double dvalue)
    {
       fEq->ComposeEvent(fEventBuf, fEventSize);
@@ -119,24 +136,28 @@ public:
       fEq->SendEvent(fEventBuf);
    }
 
+   /** \brief JSON rpc interface <b>CURRENTLY UNUSED</b>. */
    std::string HandleRpc(const char* cmd, const char* args)
    {
       fMfe->Msg(MINFO, "HandleRpc", "RPC cmd [%s], args [%s]", cmd, args);
       return "OK";
    }
 
+   /** \brief Begin-of-Run operations <b>CURRENTLY UNUSED</b>. */
    void HandleBeginRun()
    {
       fMfe->Msg(MINFO, "HandleBeginRun", "Begin run!");
       fEq->SetStatus("Running", "#00FF00");
    }
 
+   /** \brief End-of-Run operations <b>CURRENTLY UNUSED</b>. */
    void HandleEndRun()
    {
       fMfe->Msg(MINFO, "HandleEndRun", "End run!");
       fEq->SetStatus("Stopped", "#00FF00");
    }
 
+   /** \brief Periodic operations, reading variables from LabView. */
    void HandlePeriodic()
    {
       // printf("periodic!\n");
@@ -147,9 +168,11 @@ public:
       //fEq->WriteStatistics();
    }
 
+   /** \brief Function called on ODB setting change, sending variables to LabView. */
    void fecallback(HNDLE hDB, HNDLE hkey, INT index);
    INT read_event();
 
+   /** \brief Confirm server we're talking to is actually LabView. */
    bool Handshake(){
       string resp = Exchange("midas\r\n");
       bool correct = (resp.substr(0,7) == string("labview"));
@@ -158,6 +181,7 @@ public:
       return correct;
    }
 
+   /** \brief Request list of variables from LabView, populate ODB. */
    unsigned int GetVars();
 private:
    vector<string> vars, sets;

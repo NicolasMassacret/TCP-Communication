@@ -25,6 +25,9 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+/** \brief Generic frontend for communicating with a TPC/IP server
+ * using KO's KOtcpConnection class
+ */
 class feTCP :
 public TMFeRpcHandlerInterface,
     public  TMFePeriodicHandlerInterface
@@ -42,7 +45,8 @@ public TMFeRpcHandlerInterface,
     //int fPortnum = 4711;
     int fSockFd;
 
-    feTCP(TMFE* mfe, TMFeEquipment* eq) // ctor
+    feTCP(TMFE* mfe /**< [in]  Midas frontend interfacing class. */,
+             TMFeEquipment* eq /**< [in]  Midas equipment class. */) // ctor
         {
             fMfe = mfe;
             fEq  = eq;
@@ -69,6 +73,7 @@ public TMFeRpcHandlerInterface,
         fEventBuf = (char*)malloc(fEventSize);
     }
 
+    /** \brief Midas event creation. */
     void SendEvent(double dvalue)
     {
         fEq->ComposeEvent(fEventBuf, fEventSize);
@@ -81,11 +86,13 @@ public TMFeRpcHandlerInterface,
         fEq->SendEvent(fEventBuf);
     }
 
+    /** \brief JSON rpc interface <b>CURRENTLY UNUSED</b>. */
     std::string HandleRpc(const char* cmd, const char* args)
         {
             fMfe->Msg(MINFO, "HandleRpc", "RPC cmd [%s], args [%s]", cmd, args);
             return "OK";
         }
+
 
     void HandleBeginRun()
     {
@@ -108,6 +115,7 @@ public TMFeRpcHandlerInterface,
         //fEq->WriteStatistics();
     }
 
+    /** \brief Open TCP connection and set parameters. */
     bool TCPConnect()
     {
         fEq->fOdbEqSettings->RS("hostname", &fHostname, true);
@@ -134,6 +142,11 @@ public TMFeRpcHandlerInterface,
         }
     }
 
+    /** \brief Send string over TCP, optionally receive reply.
+     *
+     * \param message text to be sent to server
+     * \param expect_reply try to receive a response
+     */
     string Exchange(string message, bool expect_reply = true){
         string resp;
         if(tcp){
