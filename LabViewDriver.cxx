@@ -30,6 +30,9 @@ using std::endl;
 #define NCH 12
 #define SEPARATOR "_"
 
+/**
+ * \brief helper function to split a string into a vector of strings
+ */
 vector<string> split(const string& str, const string& delim)
 {
     vector<string> tokens;
@@ -173,6 +176,9 @@ private:
    int verbose = 1;
 };
 
+/** \brief global wrapper for Midas callback of class function
+ *
+ */
 void callback(INT hDB, INT hkey, INT index, void *feptr)
 {
    feLabview* fe = (feLabview*)feptr;
