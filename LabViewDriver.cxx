@@ -173,9 +173,6 @@ private:
       else if(verbose) fMfe->Msg(MINFO, "Handshake", "Handshake successful");
       return correct;
    }
-
-   unsigned int GetVars();
-private:
    int TypeConvert(const char c);
    char TypeConvert(const int t);
    enum varset { var, set };
