@@ -14,6 +14,7 @@
 #include <string>
 #include <algorithm>
 #include <stdexcept>
+#include <set>
 
 #include "midas.h"
 #include "tmfe.h"
@@ -97,6 +98,8 @@ public:
       stype.push_back(TID_STRING);
       sets.push_back("port");
       stype.push_back(TID_STRING);
+      sets.push_back("apply_on_festart");
+      stype.push_back(TID_BOOL);
 
       nFixedSettings = sets.size();
       nFixedVars = vars.size();
@@ -149,6 +152,7 @@ public:
 
    /** \brief Function called on ODB setting change, sending variables to LabView. */
    void fecallback(HNDLE hDB, HNDLE hkey, INT index);
+   INT read_event();
 
    /** \brief Connect to LabView and confirm identity. */
    bool LVConnect()
@@ -169,7 +173,23 @@ private:
       else if(verbose) fMfe->Msg(MINFO, "Handshake", "Handshake successful");
       return correct;
    }
-   INT read_event();
+
+   unsigned int GetVars();
+private:
+   int TypeConvert(const char c);
+   char TypeConvert(const int t);
+   enum varset { var, set };
+   template <class T>
+   bool ReadLVVar(const varset vs, const string name, const int type, T &retval);
+   bool WriteLVSetFromODB(const HNDLE hkey, bool confirm = true);
+   template <class T>
+   bool WriteLVSet(const string name, const int type, const T val, bool confirm = true);
+   template <class T>
+   void WriteODB(const varset vs, const string name, const int type, const T val);
+   void WriteODB(const varset vs, const string name, const int type, const string val);
+   template <class T>
+   void ReadODB(const varset vs, const string name, const int type, T &retval);
+   void ReadODB(const varset vs, const string name, const int type, string &retval);
    vector<string> vars, sets;
    vector<int> vtype, stype;
    unsigned int nFixedSettings, nFixedVars;
@@ -185,6 +205,196 @@ void callback(INT hDB, INT hkey, INT index, void *feptr)
    fe->fecallback(hDB, hkey, index);
 }
 
+int feLabview::TypeConvert(const char ctype)
+{
+   switch(ctype){
+   case 'B': return TID_BOOL; break;
+   case 'I': return TID_INT; break;
+   case 'F': return TID_FLOAT; break;
+   case 'D': return TID_DOUBLE; break;
+   case 'S': return TID_STRING; break;
+   case 'u': return TID_WORD; break;
+   case 'U': return TID_DWORD; break;
+   default : fMfe->Msg(MERROR, "TypeConvert", "Unsupported data type: %c",  ctype); return 0;
+   }
+}
+
+char feLabview::TypeConvert(const int type)
+{
+   switch(type){
+   case TID_BOOL:   return 'B'; break;
+   case TID_INT:    return 'I'; break;
+   case TID_FLOAT:  return 'F'; break;
+   case TID_DOUBLE: return 'D'; break;
+   case TID_STRING: return 'S'; break;
+   case TID_WORD:   return 'u'; break;
+   case TID_DWORD:  return 'U'; break;
+   default: return 'X';         // this shouldn't occur
+   }
+}
+
+template <class T>
+bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T &retval)
+{
+   std::ostringstream oss;
+   if(vs == var) oss << 'R';
+   else if(vs == set) oss << 'W';
+   oss << TypeConvert(type);
+   oss << name << "_?\r\n";
+   string resp=Exchange(oss.str());
+   if(verbose>2) cout << "Sent: " << oss.str() << "\tReceived: " << resp << endl;
+   vector<string> rv = split(resp, SEPARATOR);
+   if(rv.size()==2){
+      std::istringstream iss(rv[1]);
+      if(iss >> retval) return true;    // this acts like a boolean, so if the operation fails, returns false
+      else return false;
+   }
+   return false;
+}
+
+bool feLabview::WriteLVSetFromODB(const HNDLE hkey, bool confirm)
+{
+   MVOdb *db = fEq->fOdbEqSettings;
+   KEY key;
+   int status = db_get_key(fMfe->fDB, hkey, &key);
+   bool success = !confirm;
+   if(status == DB_SUCCESS){    // Use template functions here
+      switch(key.type){
+      case TID_BOOL:{
+         bool val;
+         db->RB(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_INT:{
+         int val;
+         db->RI(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_FLOAT:{
+         float val;
+         db->RF(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_DOUBLE:{
+         double val;
+         db->RD(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_STRING:{
+         string val;
+         db->RS(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_WORD:{
+         uint16_t val;
+         db->RU16(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      case TID_DWORD:{
+         uint32_t val;
+         db->RU32(key.name, &val);
+         success = WriteLVSet(key.name, key.type, val, confirm);
+         break;
+      }
+      }
+      return success;
+   } else {
+      return false;
+   }
+}
+
+template <class T>
+bool feLabview::WriteLVSet(const string name, const int type, const T val, bool confirm)
+{
+   std::ostringstream oss;
+   oss << 'W';
+   oss << TypeConvert(type);
+   oss << name << '_';
+   if(type == TID_FLOAT || type == TID_DOUBLE){ // FIXME: hack because currently Labview doesn't know how to read scientific notation
+      oss << std::fixed << std::setprecision(16);
+   }
+   oss << val;
+   Exchange(oss.str(), false);
+   if(confirm){
+      // usleep(1000000);
+      T retval;
+      verbose++;
+      bool result = ReadLVVar(set, name, type, retval); // FIXME: Readback fails somehow
+      int count = 0;
+      while(!result && count < 3){
+         result = ReadLVVar(set, name, type, retval); // FIXME: second attempt usually works
+         count++;
+      }
+      verbose--;
+      if(!result){
+         cm_msg(MERROR, "WriteLVSet", "Readback for %s failed\n", name.c_str());
+      } else if(retval != val){
+         std::ostringstream oss2;
+         oss2 << "Readback for " << name << " doesn't match request: " << retval << " != " << val;
+         cm_msg(MERROR, "WriteLVSet", "%s", oss2.str().c_str());
+      } else if(verbose>1){
+         cout << "Sent: " << oss.str() << "\tReceived: " << retval << endl;
+      }
+      return result;
+   } else {
+      return true;
+   }
+}
+
+template <class T>
+void feLabview::WriteODB(const varset vs, const string name, const int type, const T val)
+{
+   MVOdb *db = fEq->fOdbEqVariables;
+   if(vs == set) db = fEq->fOdbEqSettings;
+   assert(type != TID_STRING);
+   switch(type){
+   case TID_BOOL:   db->WB(name.c_str(), val); break;
+   case TID_INT:    db->WI(name.c_str(), val); break;
+   case TID_FLOAT:  db->WF(name.c_str(), val); break;
+   case TID_DOUBLE: db->WD(name.c_str(), val); break;
+   case TID_WORD:   db->WU16(name.c_str(), val); break;
+   case TID_DWORD:  db->WU32(name.c_str(), val); break;
+   }
+}
+
+void feLabview::WriteODB(const varset vs, const string name, const int type, const string val)
+{
+   MVOdb *db = fEq->fOdbEqVariables;
+   if(vs == set) db = fEq->fOdbEqSettings;
+   assert(type == TID_STRING);
+   db->WS(name.c_str(), val.c_str(), val.size());
+}
+
+template <class T>
+void feLabview::ReadODB(const varset vs, const string name, const int type, T &val)
+{
+   MVOdb *db = fEq->fOdbEqVariables;
+   if(vs == set) db = fEq->fOdbEqSettings;
+   assert(type != TID_STRING);
+   switch(type){
+   case TID_BOOL:   db->RB(name.c_str(), val); break;
+   case TID_INT:    db->RI(name.c_str(), val); break;
+   case TID_FLOAT:  db->RF(name.c_str(), val); break;
+   case TID_DOUBLE: db->RD(name.c_str(), val); break;
+   case TID_WORD:   db->RU16(name.c_str(), val); break;
+   case TID_DWORD:  db->RU32(name.c_str(), val); break;
+   }
+}
+
+void feLabview::ReadODB(const varset vs, const string name, const int type, string &val)
+{
+   MVOdb *db = fEq->fOdbEqVariables;
+   if(vs == set) db = fEq->fOdbEqSettings;
+   assert(type == TID_STRING);
+   db->RS(name.c_str(), &val);
+}
+
 unsigned int feLabview::GetVars()
 {
    sets.resize(nFixedSettings); vars.resize(nFixedVars);
@@ -196,17 +406,7 @@ unsigned int feLabview::GetVars()
       char set_or_var = s[0];
       char ctype = s[1];
       s.erase(0,2);
-      int type;
-      switch(ctype){
-      case 'B': type = TID_BOOL; break;
-      case 'I': type = TID_INT; break;
-      case 'F': type = TID_FLOAT; break;
-      case 'D': type = TID_DOUBLE; break;
-      case 'S': type = TID_STRING; break;
-      case 'u': type = TID_WORD; break;
-      case 'U': type = TID_DWORD; break;
-      default : type = 0; fMfe->Msg(MERROR, "GetVars", "Unsupported data type: %c",  ctype);
-      }
+      int type = TypeConvert(ctype);
       if(set_or_var == 'W'){
          sets.push_back(s);
          stype.push_back(type);
@@ -245,16 +445,20 @@ unsigned int feLabview::GetVars()
       }
    }
    if(verbose){
-      // if(odbsets == sets) cout << "Settings match!" << endl;
-      // else {
-         cout << "Settings don't match!" << endl;
-         cout << "LabView:\t";
-         for(string s: sets) cout << s << '\t';
-         cout <<  endl;
-         cout << "ODB:    \t";
-         for(string s: odbsets) cout << s << '\t';
-         cout <<  endl;
-      // }
+      if(odbsets == sets) cout << "Settings match!" << endl;
+      else {
+         std::set<string> sodbsets(odbsets.begin(), odbsets.end()), ssets(sets.begin(), sets.end()); // Using set so they're ordered
+         if(sodbsets == ssets) cout << "Settings match!" << endl;
+         else {
+            cout << "Settings don't match!" << endl;
+            cout << "LabView:\t";
+            for(string s: ssets) cout << s << '\t';
+            cout <<  endl;
+            cout << "ODB:    \t";
+            for(string s: sodbsets) cout << s << '\t';
+            cout <<  endl;
+         }
+      }
    }
    for(unsigned int i = 0; i < sets.size(); i++){
       bool found = false;
@@ -324,245 +528,9 @@ unsigned int feLabview::GetVars()
 
 void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
 {
-   KEY key;
-   int status = db_get_key(hDB, hkey, &key);
-
-   std::ostringstream oss, oss2;
-   oss << 'W';
-   oss2 << 'W';
-
-   if(status == DB_SUCCESS){
-      switch(key.type){
-      case TID_BOOL:
-         {
-            bool val;
-            int size = sizeof(val);
-            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            // sprintf(reqstr, (val?"true":"false"));
-            oss << 'B' << key.name << SEPARATOR << int(val) << "\r\n";
-            oss2 << 'B' << key.name << SEPARATOR << '?' << "\r\n";
-            Exchange(oss.str(), false);
-            string resp=Exchange(oss2.str());
-            bool rbk = !val;
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               try{
-                  rbk = bool(std::stoi(rv[1]));
-               }
-               catch (const std::invalid_argument& ia){
-                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-               }
-            }
-            if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
-            } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
-            }
-            break;
-         }
-      case TID_INT:
-         {
-            int val;
-            int size = sizeof(val);
-            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            // sprintf(reqstr, "%d", val);
-            oss << 'I' << key.name << SEPARATOR << val << "\r\n";
-            oss2 << 'I' << key.name << SEPARATOR << '?' << "\r\n";
-            Exchange(oss.str(), false);
-            string resp=Exchange(oss2.str());
-            int rbk = -99999;
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               try{
-                  rbk = std::stoi(rv[1]);
-               }
-               catch (const std::invalid_argument& ia){
-                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-               }
-            }
-            if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, rbk, val);
-            } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
-            }
-
-            break;
-         }
-      case TID_DOUBLE:
-         {
-            double val;
-            int size = sizeof(val);
-            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'D' << key.name << SEPARATOR << std::fixed << std::setprecision(16) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
-            // oss << 'D' << key.name << SEPARATOR << val << "\r\n"; // FIXME: go back to this once Labview is fixed
-            oss2 << 'D' << key.name << SEPARATOR << '?' << "\r\n";
-            Exchange(oss.str(), false);
-            string resp=Exchange(oss2.str());
-            cout << "> >> >> >> >> >> >> >> " << resp << endl;
-            double rbk = -99999;
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               try{
-                  rbk = std::stod(rv[1]);
-               }
-               catch (const std::invalid_argument& ia){
-                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-               }
-            }
-            if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
-            } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
-            }
-
-            break;
-         }
-      case TID_FLOAT:
-         {
-            float val;
-            int size = sizeof(val);
-            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'F' << key.name << SEPARATOR << std::fixed << std::setprecision(16) << val << "\r\n"; // FIXME: hack because currently Labview doesn't know how to read scientific notation
-            // oss << 'F' << key.name << SEPARATOR << val << "\r\n"; // FIXME: go back to this once Labview is fixed
-            oss2 << 'F' << key.name << SEPARATOR << '?' << "\r\n";
-            Exchange(oss.str(), false);
-            string resp=Exchange(oss2.str());
-            float rbk = -99999;
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               try{
-                  rbk = std::stod(rv[1]);
-               }
-               catch (const std::invalid_argument& ia){
-                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-               }
-            }
-            if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %f != %f\n", key.name, rbk, val);
-            } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
-            }
-
-            break;
-         }
-      case TID_STRING:
-         {
-            char val[256];
-            int size = 256;
-            db_get_data(hDB, hkey, (void*)val, &size, key.type);
-            oss << 'S' << key.name << SEPARATOR << val << "\r\n";
-            oss2 << 'S' << key.name << SEPARATOR << '?' << "\r\n";
-            Exchange(oss.str(), false);
-            string resp=Exchange(oss2.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[1] != string(val)){
-                  cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %s != %s\n", key.name, rv[1].c_str(), val);
-               } else if(verbose){
-                  cm_msg(MINFO, "fecallback", "Setting changed successfully.");
-               }
-            }
-            break;
-         }
-      case TID_WORD:
-         {
-            uint16_t val;
-            int size = sizeof(val);
-            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'u' << key.name << SEPARATOR << int(val) << "\r\n";
-            oss2 << 'u' << key.name << SEPARATOR << '?' << "\r\n";
-            Exchange(oss.str(), false);
-            string resp=Exchange(oss2.str());
-            uint16_t rbk = 0;
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               try{
-                  rbk = std::stoi(rv[1]);
-               }
-               catch (const std::invalid_argument& ia){
-                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-               }
-            }
-            if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
-            } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
-            }
-
-            // sprintf(reqstr, "%d", val);
-            break;
-         }
-      case TID_DWORD:
-         {
-            uint32_t val;
-            int size = sizeof(val);
-            db_get_data(hDB, hkey, (void*)&val, &size, key.type);
-            oss << 'U' << key.name << SEPARATOR << int(val) << "\r\n";
-            oss2 << 'U' << key.name << SEPARATOR << '?' << "\r\n";
-            Exchange(oss.str(), false);
-            string resp=Exchange(oss2.str());
-            uint32_t rbk = 0;
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               try{
-                  rbk = std::stoi(rv[1]);
-               }
-               catch (const std::invalid_argument& ia){
-                  cm_msg(MERROR, "fecallback", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-               }
-            }
-            if(rbk != val){
-               cm_msg(MERROR, "fecallback", "Readback for %s doesn't match request: %d != %d\n", key.name, int(rbk), int(val));
-            } else if(verbose){
-               cm_msg(MINFO, "fecallback", "Setting changed successfully.");
-            }
-
-            break;
-         }
-      }
-      if(verbose) cm_msg(MINFO, "callback", "Change requested: %s\n", oss.str().c_str());
-   }
-   // //char respond;
-   // std::string respond_str(resp.c_str());
-
-   // printf("Value returned: %s \n", respond_str.c_str());
+   WriteLVSetFromODB(hkey, true);
 }
 
-// INT feLabview::read_event(char *pevent, INT off)
-// INT feLabview::read_event()
-// {
-//    double value;
-
-//    if(settings.dynamic==true)
-//       {
-//          /*Update variables to monitor and destination in ODB*/
-//          fEq->fOdbEqSettings->RSA("LabV_monitored_variables", &settings.LabVar, true, NCH);
-//       }
-
-//    /*Read variables and write their value in ODB*/
-//    for(unsigned int a=0; a<settings.LabVar.size(); a++)
-//       {
-//          if(settings.LabVar[a].size())
-//             {
-//                // printf("Reading variable : %s \n", settings.LabVar[a].c_str());
-//                string resp=Exchange(string("read_")+settings.LabVar[a]+"\r\n");
-//                try{
-//                   value = std::stod(resp);
-//                }
-//                catch (const std::invalid_argument& ia){
-//                   value=-99999;
-//                   printf("Received empty message from client. \n");
-//                }
-
-//                printf("Value returned: %f \n", value);
-
-//                variables[a]=value;
-//             }
-//       }
-//    fEq->fOdbEqVariables->WDA("LabV_var_val", variables);
-
-//    return 0;
-// }
 
 INT feLabview::read_event()
 {
@@ -572,146 +540,51 @@ INT feLabview::read_event()
       switch(vtype[i]){
       case TID_BOOL:
          {
-            bool val(false);
-            oss << 'B' << vars[i] << "_?\r\n";
-            string resp=Exchange(oss.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[0].substr(2) == vars[i]){
-                  try{
-                     val = bool(std::stoi(rv[1]));
-                     if(verbose) cout << vars[i] << " = " << int(val) << endl;
-                     fEq->fOdbEqVariables->WB(vars[i].c_str(), val);
-                  }
-                  catch (const std::invalid_argument& ia){
-                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-                  }
-               } else {
-                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
-               }
-            }
+            bool val;
+            ReadLVVar(var, vars[i], vtype[i], val);
+            WriteODB(var, vars[i], vtype[i], val);
             break;
          }
       case TID_INT:
          {
             int val;
-            oss << 'I' << vars[i] << "_?\r\n";
-            string resp=Exchange(oss.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[0].substr(2) == vars[i]){
-                  try{
-                     val = std::stoi(rv[1]);
-                     if(verbose) cout << vars[i] << " = " << val << endl;
-                     fEq->fOdbEqVariables->WI(vars[i].c_str(), val);
-                  }
-                  catch (const std::invalid_argument& ia){
-                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-                  }
-               } else {
-                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
-               }
-            }
+            ReadLVVar(var, vars[i], vtype[i], val);
+            WriteODB(var, vars[i], vtype[i], val);
             break;
          }
       case TID_DOUBLE:
          {
             double val;
-            oss << 'D' << vars[i] << "_?\r\n";
-            string resp=Exchange(oss.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[0].substr(2) == vars[i]){
-                  try{
-                     val = std::stod(rv[1]);
-                     if(verbose) cout << vars[i] << " = " << val << endl;
-                     fEq->fOdbEqVariables->WD(vars[i].c_str(), val);
-                  }
-                  catch (const std::invalid_argument& ia){
-                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-                  }
-               } else {
-                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
-               }
-            }
+            ReadLVVar(var, vars[i], vtype[i], val);
+            WriteODB(var, vars[i], vtype[i], val);
             break;
          }
       case TID_FLOAT:
          {
             float val;
-            oss << 'F' << vars[i] << "_?\r\n";
-            string resp=Exchange(oss.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[0].substr(2) == vars[i]){
-                  try{
-                     val = std::stof(rv[1]);
-                     if(verbose) cout << vars[i] << " = " << val << endl;
-                     fEq->fOdbEqVariables->WF(vars[i].c_str(), val);
-                  }
-                  catch (const std::invalid_argument& ia){
-                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-                  }
-               } else {
-                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
-               }
-            }
+            ReadLVVar(var, vars[i], vtype[i], val);
+            WriteODB(var, vars[i], vtype[i], val);
             break;
          }
       case TID_STRING:
          {
-            oss << 'S' << vars[i] << "_?\r\n";
-            string resp=Exchange(oss.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[0].substr(2) == vars[i]){
-                  if(verbose) cout << vars[i] << " = " << rv[1] << endl;
-                  fEq->fOdbEqVariables->WS(vars[i].c_str(), rv[1].c_str(), rv[1].size());
-               }
-            }
+            string val;
+            ReadLVVar(var, vars[i], vtype[i], val);
+            WriteODB(var, vars[i], vtype[i], val);
             break;
          }
       case TID_WORD:
          {
             uint16_t val;
-            oss << 'u' << vars[i] << "_?\r\n";
-            string resp=Exchange(oss.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[0].substr(2) == vars[i]){
-                  try{
-                     val = std::stoi(rv[1]);
-                     if(verbose) cout << vars[i] << " = " << val << endl;
-                     fEq->fOdbEqVariables->WU16(vars[i].c_str(), val);
-                  }
-                  catch (const std::invalid_argument& ia){
-                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-                  }
-               } else {
-                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
-               }
-            }
+            ReadLVVar(var, vars[i], vtype[i], val);
+            WriteODB(var, vars[i], vtype[i], val);
             break;
          }
       case TID_DWORD:
          {
             uint32_t val;
-            oss << 'U' << vars[i] << "_?\r\n";
-            string resp=Exchange(oss.str());
-            vector<string> rv = split(resp, SEPARATOR);
-            if(rv.size()==2){
-               if(rv[0].substr(2) == vars[i]){
-                  try{
-                     val = std::stoi(rv[1]);
-                     fEq->fOdbEqVariables->WU32(vars[i].c_str(), val);
-                  }
-                  catch (const std::invalid_argument& ia){
-                     cm_msg(MERROR, "read_event", "Received incompatible response from LabView: >%s<\n", resp.c_str());
-                  }
-               } else {
-                  cm_msg(MERROR, "read_event", "Received wrong variable from LabView: >%s<\n", resp.c_str());
-               }
-            }
+            ReadLVVar(var, vars[i], vtype[i], val);
+            WriteODB(var, vars[i], vtype[i], val);
             break;
          }
       }
@@ -792,7 +665,7 @@ int main(int argc, char* argv[])
 
    mfe->RegisterPeriodicHandler(eq, myfe);
 
-
+   
    if(connected){
       std::ostringstream oss;
       oss << "Connected to " << myfe->fHostname << ':' << myfe->fPortnum;
