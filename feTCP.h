@@ -129,7 +129,7 @@ public TMFeRpcHandlerInterface,
         //sprintf(portstr,"%d",fPortnum);
         tcp = new KOtcpConnection(fHostname.c_str(),fPortnum.c_str());
         tcp->fConnectTimeoutMilliSec = 500;
-        tcp->fReadTimeoutMilliSec = 500;
+        tcp->fReadTimeoutMilliSec = 2000;
         tcp->fWriteTimeoutMilliSec = 500;
         //tcp = new KOtcpConnection(fHostname.c_str(), portstr);
         KOtcpError err = tcp->Connect();
@@ -147,7 +147,7 @@ public TMFeRpcHandlerInterface,
      * \param message text to be sent to server
      * \param expect_reply try to receive a response
      */
-    string Exchange(string message, bool expect_reply = true){
+    string Exchange(string message, bool expect_reply = true, string expected = ""){
         string resp;
         if(tcp){
             if(tcp->fConnected){
@@ -158,10 +158,24 @@ public TMFeRpcHandlerInterface,
                 }
                 if(expect_reply){
                     err = tcp->ReadString(&resp,4096);
+		    if(!resp.size()){
+		      usleep(100000);
+		      err = tcp->ReadString(&resp,4096);
+		      if(!resp.size()){
+			cerr << "Response empty even on second try" << endl;
+			return resp;
+		      }
+		    }
                     if(err.error){
                         cerr << err.message << endl;
                         return resp;
                     }
+		    if(expected.size()){
+		      if(resp.find(expected) != 0){
+			cerr << "Did not receive expected string \"" << expected << "\" at beginning of response, response was " << resp << endl;
+			return "";
+		      }
+		    }
                 }
             }
         }

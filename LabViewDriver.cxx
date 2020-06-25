@@ -12,6 +12,7 @@
 #include <iomanip>              // to change stream formatting
 #include <sstream>
 #include <string>
+#include <vector>
 #include <algorithm>
 #include <stdexcept>
 #include <set>
@@ -237,11 +238,17 @@ bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T 
    if(vs == var) oss << 'R';
    else if(vs == set) oss << 'W';
    oss << TypeConvert(type);
-   oss << name << "_?\r\n";
-   string resp=Exchange(oss.str());
-   if(verbose>2) cout << "Sent: " << oss.str() << "\tReceived: " << resp << endl;
+   oss << name;
+   string varname = oss.str();
+   oss << "_?\r\n";
+   string resp=Exchange(oss.str(), true, varname);
+   if(verbose>2) cout << "ReadLVVar Sent: " << oss.str() << "\tReceived: " << resp << endl;
    vector<string> rv = split(resp, SEPARATOR);
    if(rv.size()==2){
+      if(rv[0] != varname){
+         cm_msg(MERROR, "ReadLVVar", "Asked for %s, but got %s", name.c_str(), rv[0].c_str());
+         return false;
+      }
       std::istringstream iss(rv[1]);
       if(iss >> retval) return true;    // this acts like a boolean, so if the operation fails, returns false
       else return false;
@@ -319,7 +326,7 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
    oss << val;
    Exchange(oss.str(), false);
    if(confirm){
-      // usleep(1000000);
+      usleep(100000);
       T retval;
       verbose++;
       bool result = ReadLVVar(set, name, type, retval); // FIXME: Readback fails somehow
@@ -336,7 +343,7 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
          oss2 << "Readback for " << name << " doesn't match request: " << retval << " != " << val;
          cm_msg(MERROR, "WriteLVSet", "%s", oss2.str().c_str());
       } else if(verbose>1){
-         cout << "Sent: " << oss.str() << "\tReceived: " << retval << endl;
+         cout << "WriteLVSet Sent: " << oss.str() << "\tReceived: " << retval << endl;
       }
       return result;
    } else {
@@ -597,8 +604,8 @@ static void usage()
 
 int main(int argc, char* argv[])
 {
-   setbuf(stdout, NULL);
-   setbuf(stderr, NULL);
+   // setbuf(stdout, NULL);
+   // setbuf(stderr, NULL);
 
    signal(SIGPIPE, SIG_IGN);
 
