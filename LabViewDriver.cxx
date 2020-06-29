@@ -323,7 +323,7 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
    if(type == TID_FLOAT || type == TID_DOUBLE){ // FIXME: hack because currently Labview doesn't know how to read scientific notation
       oss << std::fixed << std::setprecision(16);
    }
-   oss << val;
+   oss << val << "\r\n";
    Exchange(oss.str(), false);
    if(confirm){
       usleep(100000);
@@ -669,7 +669,7 @@ int main(int argc, char* argv[])
 
    mfe->RegisterPeriodicHandler(eq, myfe);
 
-   
+
    if(connected){
       std::ostringstream oss;
       oss << "Connected to " << myfe->fHostname << ':' << myfe->fPortnum;

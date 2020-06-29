@@ -97,13 +97,13 @@ public TMFeRpcHandlerInterface,
     void HandleBeginRun()
     {
         fMfe->Msg(MINFO, "HandleBeginRun", "Begin run!");
-        fEq->SetStatus("Running", "#00FF00");
+        /* fEq->SetStatus("Running", "#00FF00"); */
     }
 
     void HandleEndRun()
     {
         fMfe->Msg(MINFO, "HandleEndRun", "End run!");
-        fEq->SetStatus("Stopped", "#00FF00");
+        /* fEq->SetStatus("Stopped", "#00FF00"); */
     }
 
     void HandlePeriodic()
