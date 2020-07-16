@@ -69,7 +69,7 @@ int add_key(HNDLE hDB, HNDLE hkey, KEY *key, INT level, void *pvector){
  * Some ODB settings are always present, not dependent on the configuration of the LabView server:
  * @param hostname IP or hostname of the LabView server
  * @param port port LabView is listening on
- * @param apply_on_festart \c true to overwrite LabView settings with ODB values, \c false (default) update ODB with current settings from LabView <b>NOT IMPLEMENTED YET</b>
+ * @param applyOnFestart \c true to overwrite LabView settings with ODB values, \c false (default) update ODB with current settings from LabView <b>NOT IMPLEMENTED YET</b>
  */
 class feLabview :
    public feTCP
@@ -95,11 +95,15 @@ public:
       // fEventBuf = (char*)malloc(fEventSize);
 
       // add ODB settings that are internal -> not for LabView
+      fEq->fOdbEqSettings->RI("verbosity", &verbose, true);
+
       sets.push_back("hostname");
       stype.push_back(TID_STRING);
       sets.push_back("port");
       stype.push_back(TID_STRING);
-      sets.push_back("apply_on_festart");
+      sets.push_back("verbosity");
+      stype.push_back(TID_INT);
+      sets.push_back("applyOnFestart");
       stype.push_back(TID_BOOL);
 
       nFixedSettings = sets.size();
@@ -332,6 +336,7 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
       bool result = ReadLVVar(set, name, type, retval); // FIXME: Readback fails somehow
       int count = 0;
       while(!result && count < 3){
+         if(verbose > 1) cerr << "Readback failed, trying again..." << count << endl;
          result = ReadLVVar(set, name, type, retval); // FIXME: second attempt usually works
          count++;
       }
@@ -355,15 +360,23 @@ template <class T>
 void feLabview::WriteODB(const varset vs, const string name, const int type, const T val)
 {
    MVOdb *db = fEq->fOdbEqVariables;
+   MVOdbError err;
    if(vs == set) db = fEq->fOdbEqSettings;
    assert(type != TID_STRING);
+   if(verbose > 2){
+      cout << "Writing to ODB: " << name << "\tvalue: " << val << endl;
+   }
    switch(type){
-   case TID_BOOL:   db->WB(name.c_str(), val); break;
-   case TID_INT:    db->WI(name.c_str(), val); break;
-   case TID_FLOAT:  db->WF(name.c_str(), val); break;
-   case TID_DOUBLE: db->WD(name.c_str(), val); break;
-   case TID_WORD:   db->WU16(name.c_str(), val); break;
-   case TID_DWORD:  db->WU32(name.c_str(), val); break;
+   case TID_BOOL:   db->WB(name.c_str(), val, &err); break;
+   case TID_INT:    db->WI(name.c_str(), val, &err); break;
+   case TID_FLOAT:  db->WF(name.c_str(), val, &err); break;
+   case TID_DOUBLE: db->WD(name.c_str(), val, &err); break;
+   case TID_WORD:   db->WU16(name.c_str(), val, &err); break;
+   case TID_DWORD:  db->WU32(name.c_str(), val, &err); break;
+   default: assert(0);          // Die if unsupported type is requested
+   }
+   if(err.fError){
+      cerr << "ERROR!!! " << err.fErrorString << "Status: " << err.fStatus << endl;
    }
 }
 
@@ -372,6 +385,9 @@ void feLabview::WriteODB(const varset vs, const string name, const int type, con
    MVOdb *db = fEq->fOdbEqVariables;
    if(vs == set) db = fEq->fOdbEqSettings;
    assert(type == TID_STRING);
+   if(verbose > 2){
+      cout << "Writing string to ODB: " << name << "\tvalue: " << val << endl;
+   }
    db->WS(name.c_str(), val.c_str(), val.size());
 }
 
