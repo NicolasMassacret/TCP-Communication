@@ -267,6 +267,9 @@ bool feLabview::WriteLVSetFromODB(const HNDLE hkey, bool confirm)
    int status = db_get_key(fMfe->fDB, hkey, &key);
    bool success = !confirm;
    if(status == DB_SUCCESS){    // Use template functions here
+      if(verbose > 1){
+         std::cout << "Setting ODB entry " << key.name << std::endl;
+      }
       switch(key.type){
       case TID_BOOL:{
          bool val;
