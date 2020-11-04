@@ -1,4 +1,4 @@
-add_library(KO KOtcp.cxx $ENV{MIDASSYS}/lib/mvodb.o $ENV{MIDASSYS}/lib/tmfe.o)
+add_library(KO KOtcp.cxx)
 add_executable(LabViewDriver LabViewDriver.cxx)
 target_include_directories(KO PRIVATE ${INC_PATH})
 target_include_directories(LabViewDriver PRIVATE ${INC_PATH})

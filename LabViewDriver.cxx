@@ -331,6 +331,9 @@ bool feLabview::WriteLVSet(const string name, const int type, const T val, bool 
       oss << std::fixed << std::setprecision(16);
    }
    oss << val << "\r\n";
+   if(verbose > 1){
+      cout << "Sending: " << oss.str() << endl;
+   }
    Exchange(oss.str(), false);
    if(confirm){
       usleep(100000);
