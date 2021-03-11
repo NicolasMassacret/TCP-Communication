@@ -641,8 +641,8 @@ int main(int argc, char* argv[])
 
    TMFE* mfe = TMFE::Instance();
 
-   TMFeResult err = mfe->Connect(name.c_str(), __FILE__);
-   if (err.error_flag) {
+   TMFeError err = mfe->Connect(name.c_str(), __FILE__);
+   if (err.error) {
       printf("Cannot connect, bye.\n");
       return 1;
    }
