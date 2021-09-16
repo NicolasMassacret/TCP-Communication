@@ -11,16 +11,18 @@ import argparse
 
 ## Fake LabView read-only variables
 vars = {
-        'RDRotPos' : 4711,
-        'RDTransPos' : 12345,
-        'RBBusy' : 1
+        'RotPos' : ['I64', 4711],
+        'TransPos' : ['Double Float',12345],
+        'Busy' : ['Boolean', 1],
+        'MyString' : ['String', 'StringVal'],
+        'MyChar' : ['U8', 17]
 }
 
 ## Fake LabView read/write settings
 settings = {
-        'WDRotPos' : 0,
-        'WDTransPos' : 0,
-        'WBHomeRot' : 0
+        'RotPos' : ['I64', 0],
+        'TransPos' : ['Double Float', 0],
+        'HomeRot' : ['Boolean', 0]
 }
 
 
@@ -31,32 +33,34 @@ def answer(msg):
         Supported commands:
 
         list_vars to receive a list of available variables
-        <varname>_? to query value of variable <varname>
-        <varname>_<value> to change value of variable <varname>
+        <varname>:? to query value of variable <varname>
+        <varname>:<value> to change value of variable <varname>
         """
         msg = msg.strip("\r\n ")
         print >>sys.stderr, 'received "%s"' % msg
         if(msg == "midas"):
                 conn.sendall("labview(fake)\r\n")
+        elif(msg == "list_vars"):
+                varlist = ""
+                for key in vars:
+                        varlist = varlist + key + ":" + vars[key][0] + ":V;"
+                        print(varlist)
+                for key in settings:
+                        varlist = varlist + key + ":" + settings[key][0] + ":S;"
+                        print(varlist)
+                conn.sendall(varlist + "\r\n")
         else:
-                (cmd,arg) = msg.split('_',2)
+                (cmd,arg) = msg.split(':',2)
                 print cmd, arg
-                if(cmd == "list" and arg == "vars"):
-                        varlist = ""
-                        for key in vars:
-                                varlist = varlist + "_" + key
-                        for key in settings:
-                                varlist = varlist + "_" + key
-                        conn.sendall(varlist + "\r\n")
-                elif(arg == "?"):
+                if(arg == "?"):
                         if(cmd in vars):
-                                conn.sendall(cmd + "_" + str(vars[cmd]) + "\r\n")
+                                conn.sendall(cmd + ":" + str(vars[cmd][1]) + "\r\n")
                         elif(cmd in settings):
-                                conn.sendall(cmd + "_" + str(settings[cmd]) + "\r\n")
+                                conn.sendall(cmd + ":" + str(settings[cmd][1]) + "\r\n")
                         else:
                                 print "Unknown variable:", cmd
                 elif(cmd in settings):
-                        settings[cmd] = arg
+                        settings[cmd][1] = arg
                         print "Changed", cmd, "to", arg
                 else:
                         print "Unknown command:", cmd

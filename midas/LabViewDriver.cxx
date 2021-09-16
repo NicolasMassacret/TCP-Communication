@@ -30,25 +30,26 @@ using std::cerr;
 using std::endl;
 
 #define NCH 12
-#define SEPARATOR "_"
+#define VARSEPARATOR ";"
+#define VALSEPARATOR ":"
 
 /**
  * \brief helper function to split a string into a vector of strings
  */
 vector<string> split(const string& str, const string& delim)
 {
-    vector<string> tokens;
-    size_t prev = 0, pos = 0;
-    do
-    {
-        pos = str.find(delim, prev);
-        if (pos == string::npos) pos = str.length();
-        string token = str.substr(prev, pos-prev);
-        if (!token.empty()) tokens.push_back(token);
-        prev = pos + delim.length();
-    }
-    while (pos < str.length() && prev < str.length());
-    return tokens;
+   vector<string> tokens;
+   size_t prev = 0, pos = 0;
+   do
+      {
+         pos = str.find(delim, prev);
+         if (pos == string::npos) pos = str.length();
+         string token = str.substr(prev, pos-prev);
+         if (!token.empty()) tokens.push_back(token);
+         prev = pos + delim.length();
+      }
+   while (pos < str.length() && prev < str.length());
+   return tokens;
 }
 
 int add_key(HNDLE hDB, HNDLE hkey, KEY *key, INT level, void *pvector){
@@ -178,8 +179,8 @@ private:
       else if(verbose) fMfe->Msg(MINFO, "Handshake", "Handshake successful");
       return correct;
    }
-   int TypeConvert(const char c);
-   char TypeConvert(const int t);
+   int TypeConvert(const string &s);
+   string TypeConvert(const int t);
    enum varset { var, set };
    template <class T>
    bool ReadLVVar(const varset vs, const string name, const int type, T &retval);
@@ -207,31 +208,43 @@ void callback(INT hDB, INT hkey, INT index, void *feptr)
    fe->fecallback(hDB, hkey, index);
 }
 
-int feLabview::TypeConvert(const char ctype)
+int feLabview::TypeConvert(const string &stype)
 {
-   switch(ctype){
-   case 'B': return TID_BOOL; break;
-   case 'I': return TID_INT; break;
-   case 'F': return TID_FLOAT; break;
-   case 'D': return TID_DOUBLE; break;
-   case 'S': return TID_STRING; break;
-   case 'u': return TID_WORD; break;
-   case 'U': return TID_DWORD; break;
-   default : fMfe->Msg(MERROR, "TypeConvert", "Unsupported data type: %c",  ctype); return 0;
+   if(stype == string("Boolean")) return TID_BOOL;
+   // else if(stype == string("I8")) return TID_INT8;
+   // else if(stype == string("I16")) return TID_INT16;
+   else if(stype == string("I32")) return TID_INT32;
+   // else if(stype == string("I64")) return TID_INT64;
+   // else if(stype == string("U8")) return TID_UINT8;
+   else if(stype == string("U16")) return TID_UINT16;
+   else if(stype == string("U32")) return TID_UINT32;
+   // else if(stype == string("U64")) return TID_UINT64;
+   else if(stype == string("Single Float")) return TID_FLOAT;
+   else if(stype == string("Double Float")) return TID_DOUBLE;
+   // else if(stype == string("Extended Float")) return 0;
+   else if(stype == string("String")) return TID_STRING;
+   else {
+      fMfe->Msg(MERROR, "TypeConvert", "Unsupported data type: %s",  stype.c_str());
+      return 0;
    }
 }
 
-char feLabview::TypeConvert(const int type)
+string feLabview::TypeConvert(const int type)
 {
    switch(type){
-   case TID_BOOL:   return 'B'; break;
-   case TID_INT:    return 'I'; break;
-   case TID_FLOAT:  return 'F'; break;
-   case TID_DOUBLE: return 'D'; break;
-   case TID_STRING: return 'S'; break;
-   case TID_WORD:   return 'u'; break;
-   case TID_DWORD:  return 'U'; break;
-   default: return 'X';         // this shouldn't occur
+   case TID_BOOL:   return "Boolean"; break;
+   case TID_INT8:   return "I8"; break;
+   case TID_INT16:   return "I16"; break;
+   case TID_INT32:   return "I32"; break;
+   case TID_INT64:   return "I64"; break;
+   case TID_UINT8:   return "U8"; break;
+   case TID_UINT16:   return "U16"; break;
+   case TID_UINT32:   return "U32"; break;
+   case TID_UINT64:   return "U64"; break;
+   case TID_FLOAT:  return "Single Float"; break;
+   case TID_DOUBLE: return "Double Float"; break;
+   case TID_STRING: return "String"; break;
+   default: return "Unknown";         // this shouldn't occur
    }
 }
 
@@ -239,15 +252,15 @@ template <class T>
 bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T &retval)
 {
    std::ostringstream oss;
-   if(vs == var) oss << 'R';
-   else if(vs == set) oss << 'W';
-   oss << TypeConvert(type);
+   // if(vs == var) oss << 'R';
+   // else if(vs == set) oss << 'W';
+   // oss << TypeConvert(type);
    oss << name;
    string varname = oss.str();
-   oss << "_?\r\n";
+   oss << VALSEPARATOR << "?\r\n";
    string resp=Exchange(oss.str(), true, varname);
    if(verbose>2) cout << "ReadLVVar Sent: " << oss.str() << "\tReceived: " << resp << endl;
-   vector<string> rv = split(resp, SEPARATOR);
+   vector<string> rv = split(resp, VALSEPARATOR);
    if(rv.size()==2){
       if(rv[0] != varname){
          cm_msg(MERROR, "ReadLVVar", "Asked for %s, but got %s", name.c_str(), rv[0].c_str());
@@ -324,9 +337,9 @@ template <class T>
 bool feLabview::WriteLVSet(const string name, const int type, const T val, bool confirm)
 {
    std::ostringstream oss;
-   oss << 'W';
-   oss << TypeConvert(type);
-   oss << name << '_';
+   // oss << 'W';
+   // oss << TypeConvert(type);
+   oss << name << VALSEPARATOR;
    if(type == TID_FLOAT || type == TID_DOUBLE){ // FIXME: hack because currently Labview doesn't know how to read scientific notation
       oss << std::fixed << std::setprecision(16);
    }
@@ -368,6 +381,7 @@ void feLabview::WriteODB(const varset vs, const string name, const int type, con
    MVOdb *db = fEq->fOdbEqVariables;
    MVOdbError err;
    if(vs == set) db = fEq->fOdbEqSettings;
+
    assert(type != TID_STRING);
    if(verbose > 2){
       cout << "Writing to ODB: " << name << "\tvalue: " << val << endl;
@@ -394,7 +408,7 @@ void feLabview::WriteODB(const varset vs, const string name, const int type, con
    if(verbose > 2){
       cout << "Writing string to ODB: " << name << "\tvalue: " << val << endl;
    }
-   db->WS(name.c_str(), val.c_str(), val.size());
+   db->WS(name.c_str(), val.c_str(), val.size()+1);
 }
 
 template <class T>
@@ -426,19 +440,24 @@ unsigned int feLabview::GetVars()
    sets.resize(nFixedSettings); vars.resize(nFixedVars);
    stype.resize(nFixedSettings); vtype.resize(nFixedVars);
    string resp = Exchange("list_vars\r\n");
-   cout << "Response: " << resp << "(" << resp.size() << ")" << endl;
-   vector<string> tokens = split(resp, SEPARATOR);
+   if(verbose > 1) cout << "Response: " << resp << "(" << resp.size() << ")" << endl;
+   vector<string> tokens = split(resp, VARSEPARATOR);
    for(string s: tokens){
-      char set_or_var = s[0];
-      char ctype = s[1];
-      s.erase(0,2);
-      int type = TypeConvert(ctype);
-      if(set_or_var == 'W'){
-         sets.push_back(s);
-         stype.push_back(type);
-      } else if(set_or_var == 'R'){
-         vars.push_back(s);
-         vtype.push_back(type);
+      vector<string> vartokens = split(s, VALSEPARATOR);
+      if(vartokens.size() == 3){
+         char set_or_var = vartokens[2][0];
+         int type = TypeConvert(vartokens[1]);
+         if(type>0){
+            if(set_or_var == 'S'){
+               sets.push_back(vartokens[0]);
+               stype.push_back(type);
+            } else if(set_or_var == 'V'){
+               vars.push_back(vartokens[0]);
+               vtype.push_back(type);
+            }
+         }
+      } else {
+         cerr << "Received bad string >" << s << "<" << endl;
       }
    }
    vector<string> odbsets, odbvars;
@@ -501,6 +520,7 @@ unsigned int feLabview::GetVars()
          }
       }
       if(!found){
+         cout << "Creating key " << sets[i] << ", type " << stype[i] << endl;
          db_create_key(fMfe->fDB, odbs, sets[i].c_str(), stype[i]);
       }
    }
