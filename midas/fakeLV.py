@@ -12,6 +12,7 @@ import argparse
 ## Fake LabView read-only variables
 vars = {
         'RotPos' : ['I64', 4711],
+        'RotPos2' : ['I32', 4712],
         'TransPos' : ['Double Float',12345],
         'Busy' : ['Boolean', 1],
         'MyString' : ['String', 'StringVal'],
@@ -21,6 +22,7 @@ vars = {
 ## Fake LabView read/write settings
 settings = {
         'RotPos' : ['I64', 0],
+        'RotPos2' : ['I32', 0],
         'TransPos' : ['Double Float', 0],
         'HomeRot' : ['Boolean', 0]
 }

@@ -41,7 +41,7 @@ public TMFeRpcHandlerInterface,
    int fEventSize;
    char* fEventBuf;
    string fHostname = "localhost";
-   string fPortnum ="port";
+   string fPortnum ="8888";
    //int fPortnum = 4711;
    int fSockFd;
 
