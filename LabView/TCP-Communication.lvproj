@@ -22,6 +22,9 @@
 		<Property Name="server.vi.callsEnabled" Type="Bool">true</Property>
 		<Property Name="server.vi.propertiesEnabled" Type="Bool">true</Property>
 		<Property Name="specify.custom.address" Type="Bool">false</Property>
+		<Item Name="Exemple" Type="Folder">
+			<Item Name="Exemple.vi" Type="VI" URL="../Exemple/Exemple.vi"/>
+		</Item>
 		<Item Name="Project Documentation" Type="Folder">
 			<Property Name="NI.SortType" Type="Int">3</Property>
 			<Item Name="Documentation Images" Type="Folder">
@@ -109,6 +112,122 @@
 			<Item Name="TCP_SetControl.vi" Type="VI" URL="../support/TCP_SetControl.vi"/>
 		</Item>
 		<Item Name="Build Specifications" Type="Build">
+			<Item Name="20210922_TCP-Com" Type="EXE">
+				<Property Name="App_copyErrors" Type="Bool">true</Property>
+				<Property Name="App_INI_aliasGUID" Type="Str">{A26E16FB-5936-46A3-AAC6-E61623E41927}</Property>
+				<Property Name="App_INI_GUID" Type="Str">{FADD22C6-EF1C-4433-BA00-F96F6F4BDE72}</Property>
+				<Property Name="App_serverConfig.httpPort" Type="Int">8002</Property>
+				<Property Name="Bld_autoIncrement" Type="Bool">true</Property>
+				<Property Name="Bld_buildCacheID" Type="Str">{FC342A5F-4005-4C4D-BE80-F37331512559}</Property>
+				<Property Name="Bld_buildSpecName" Type="Str">20210922_TCP-Com</Property>
+				<Property Name="Bld_excludeInlineSubVIs" Type="Bool">true</Property>
+				<Property Name="Bld_excludeLibraryItems" Type="Bool">true</Property>
+				<Property Name="Bld_excludePolymorphicVIs" Type="Bool">true</Property>
+				<Property Name="Bld_localDestDir" Type="Path">../builds/NI_AB_PROJECTNAME/20210922_TCP-Com</Property>
+				<Property Name="Bld_localDestDirType" Type="Str">relativeToCommon</Property>
+				<Property Name="Bld_modifyLibraryFile" Type="Bool">true</Property>
+				<Property Name="Bld_previewCacheID" Type="Str">{12D8651C-45DE-42CB-BD6A-7FD1562D37F0}</Property>
+				<Property Name="Bld_version.build" Type="Int">1</Property>
+				<Property Name="Bld_version.major" Type="Int">1</Property>
+				<Property Name="Destination[0].destName" Type="Str">Application.exe</Property>
+				<Property Name="Destination[0].path" Type="Path">../builds/NI_AB_PROJECTNAME/20210922_TCP-Com/Application.exe</Property>
+				<Property Name="Destination[0].preserveHierarchy" Type="Bool">true</Property>
+				<Property Name="Destination[0].type" Type="Str">App</Property>
+				<Property Name="Destination[1].destName" Type="Str">Support Directory</Property>
+				<Property Name="Destination[1].path" Type="Path">../builds/NI_AB_PROJECTNAME/20210922_TCP-Com/data</Property>
+				<Property Name="DestinationCount" Type="Int">2</Property>
+				<Property Name="Source[0].itemID" Type="Str">{076294C0-FF18-4820-97B8-59DFD4C2EDCF}</Property>
+				<Property Name="Source[0].type" Type="Str">Container</Property>
+				<Property Name="Source[1].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[1].itemID" Type="Ref">/My Computer/TCP-Com.vi</Property>
+				<Property Name="Source[1].sourceInclusion" Type="Str">TopLevel</Property>
+				<Property Name="Source[1].type" Type="Str">VI</Property>
+				<Property Name="SourceCount" Type="Int">2</Property>
+				<Property Name="TgtF_fileDescription" Type="Str">20210922_TCP-Com</Property>
+				<Property Name="TgtF_internalName" Type="Str">20210922_TCP-Com</Property>
+				<Property Name="TgtF_legalCopyright" Type="Str">Copyright © 2021 </Property>
+				<Property Name="TgtF_productName" Type="Str">20210922_TCP-Com</Property>
+				<Property Name="TgtF_targetfileGUID" Type="Str">{1BA45492-70D0-42D8-B6C8-F75FCB44975F}</Property>
+				<Property Name="TgtF_targetfileName" Type="Str">Application.exe</Property>
+				<Property Name="TgtF_versionIndependent" Type="Bool">true</Property>
+			</Item>
+			<Item Name="20210922_test" Type="EXE">
+				<Property Name="App_copyErrors" Type="Bool">true</Property>
+				<Property Name="App_INI_aliasGUID" Type="Str">{BD428291-E1D1-4FDF-A086-4869D86822E0}</Property>
+				<Property Name="App_INI_GUID" Type="Str">{6F33F9F4-4574-477C-9DB4-E343BCA23F98}</Property>
+				<Property Name="App_serverConfig.httpPort" Type="Int">8002</Property>
+				<Property Name="Bld_autoIncrement" Type="Bool">true</Property>
+				<Property Name="Bld_buildCacheID" Type="Str">{20F8765C-F7C5-4F13-83A9-D8C3BCB13F6B}</Property>
+				<Property Name="Bld_buildSpecName" Type="Str">20210922_test</Property>
+				<Property Name="Bld_excludeInlineSubVIs" Type="Bool">true</Property>
+				<Property Name="Bld_excludeLibraryItems" Type="Bool">true</Property>
+				<Property Name="Bld_excludePolymorphicVIs" Type="Bool">true</Property>
+				<Property Name="Bld_localDestDir" Type="Path">../builds/NI_AB_PROJECTNAME/20210922_test</Property>
+				<Property Name="Bld_localDestDirType" Type="Str">relativeToCommon</Property>
+				<Property Name="Bld_modifyLibraryFile" Type="Bool">true</Property>
+				<Property Name="Bld_previewCacheID" Type="Str">{D0F26F58-9E89-4720-87CA-53DA82AAEFF6}</Property>
+				<Property Name="Bld_version.build" Type="Int">1</Property>
+				<Property Name="Bld_version.major" Type="Int">1</Property>
+				<Property Name="Destination[0].destName" Type="Str">Application.exe</Property>
+				<Property Name="Destination[0].path" Type="Path">../builds/NI_AB_PROJECTNAME/20210922_test/Application.exe</Property>
+				<Property Name="Destination[0].preserveHierarchy" Type="Bool">true</Property>
+				<Property Name="Destination[0].type" Type="Str">App</Property>
+				<Property Name="Destination[1].destName" Type="Str">Support Directory</Property>
+				<Property Name="Destination[1].path" Type="Path">../builds/NI_AB_PROJECTNAME/20210922_test/data</Property>
+				<Property Name="DestinationCount" Type="Int">2</Property>
+				<Property Name="Source[0].itemID" Type="Str">{076294C0-FF18-4820-97B8-59DFD4C2EDCF}</Property>
+				<Property Name="Source[0].type" Type="Str">Container</Property>
+				<Property Name="Source[1].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[1].itemID" Type="Ref">/My Computer/Exemple/Exemple.vi</Property>
+				<Property Name="Source[1].sourceInclusion" Type="Str">TopLevel</Property>
+				<Property Name="Source[1].type" Type="Str">VI</Property>
+				<Property Name="SourceCount" Type="Int">2</Property>
+				<Property Name="TgtF_fileDescription" Type="Str">20210922_test</Property>
+				<Property Name="TgtF_internalName" Type="Str">20210922_test</Property>
+				<Property Name="TgtF_legalCopyright" Type="Str">Copyright © 2021 </Property>
+				<Property Name="TgtF_productName" Type="Str">20210922_test</Property>
+				<Property Name="TgtF_targetfileGUID" Type="Str">{54BEC696-68F5-42FB-8141-1B9E04437D54}</Property>
+				<Property Name="TgtF_targetfileName" Type="Str">Application.exe</Property>
+				<Property Name="TgtF_versionIndependent" Type="Bool">true</Property>
+			</Item>
+			<Item Name="Exemple" Type="EXE">
+				<Property Name="App_copyErrors" Type="Bool">true</Property>
+				<Property Name="App_INI_aliasGUID" Type="Str">{57EC1807-C662-49A3-BFAD-A2618BBC1157}</Property>
+				<Property Name="App_INI_GUID" Type="Str">{E019A535-CA7A-46EC-8838-25AD9C16651F}</Property>
+				<Property Name="App_serverConfig.httpPort" Type="Int">8002</Property>
+				<Property Name="Bld_autoIncrement" Type="Bool">true</Property>
+				<Property Name="Bld_buildCacheID" Type="Str">{35EF1C79-4DB9-4919-8EC7-E7559F9F3834}</Property>
+				<Property Name="Bld_buildSpecName" Type="Str">Exemple</Property>
+				<Property Name="Bld_excludeInlineSubVIs" Type="Bool">true</Property>
+				<Property Name="Bld_excludeLibraryItems" Type="Bool">true</Property>
+				<Property Name="Bld_excludePolymorphicVIs" Type="Bool">true</Property>
+				<Property Name="Bld_localDestDir" Type="Path">../builds/NI_AB_PROJECTNAME/Exemple</Property>
+				<Property Name="Bld_localDestDirType" Type="Str">relativeToCommon</Property>
+				<Property Name="Bld_modifyLibraryFile" Type="Bool">true</Property>
+				<Property Name="Bld_previewCacheID" Type="Str">{3F19F24A-2780-46FB-A2A0-FA55438DB922}</Property>
+				<Property Name="Bld_version.major" Type="Int">1</Property>
+				<Property Name="Destination[0].destName" Type="Str">Application.exe</Property>
+				<Property Name="Destination[0].path" Type="Path">../builds/NI_AB_PROJECTNAME/Exemple/Application.exe</Property>
+				<Property Name="Destination[0].preserveHierarchy" Type="Bool">true</Property>
+				<Property Name="Destination[0].type" Type="Str">App</Property>
+				<Property Name="Destination[1].destName" Type="Str">Support Directory</Property>
+				<Property Name="Destination[1].path" Type="Path">../builds/NI_AB_PROJECTNAME/Exemple/data</Property>
+				<Property Name="DestinationCount" Type="Int">2</Property>
+				<Property Name="Source[0].itemID" Type="Str">{076294C0-FF18-4820-97B8-59DFD4C2EDCF}</Property>
+				<Property Name="Source[0].type" Type="Str">Container</Property>
+				<Property Name="Source[1].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[1].itemID" Type="Ref">/My Computer/Exemple/Exemple.vi</Property>
+				<Property Name="Source[1].sourceInclusion" Type="Str">TopLevel</Property>
+				<Property Name="Source[1].type" Type="Str">VI</Property>
+				<Property Name="SourceCount" Type="Int">2</Property>
+				<Property Name="TgtF_fileDescription" Type="Str">Exemple</Property>
+				<Property Name="TgtF_internalName" Type="Str">Exemple</Property>
+				<Property Name="TgtF_legalCopyright" Type="Str">Copyright © 2021 </Property>
+				<Property Name="TgtF_productName" Type="Str">Exemple</Property>
+				<Property Name="TgtF_targetfileGUID" Type="Str">{F95D2E0A-1F29-4DE6-8754-1C1208744DD6}</Property>
+				<Property Name="TgtF_targetfileName" Type="Str">Application.exe</Property>
+				<Property Name="TgtF_versionIndependent" Type="Bool">true</Property>
+			</Item>
 			<Item Name="Main Application" Type="EXE">
 				<Property Name="App_copyErrors" Type="Bool">true</Property>
 				<Property Name="App_INI_aliasGUID" Type="Str">{51D186D8-2FD9-4F4B-8F36-40D68E57FFBC}</Property>
