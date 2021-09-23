@@ -11,12 +11,14 @@
 #include <iostream>
 #include <iomanip>              // to change stream formatting
 #include <sstream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
 #include <set>
 #include <limits>
+#include <map>
 
 #include "midas.h"
 #include "tmfe.h"
@@ -110,6 +112,12 @@ public:
 
       nFixedSettings = sets.size();
       nFixedVars = vars.size();
+
+      if(ReadSelectFile()){
+         cout << "Select file read." << endl;
+      } else {
+         cout << "No select file" << endl;
+      }
    }
 
    // /* \brief Midas event creation \b UNUSED. */
@@ -205,11 +213,14 @@ private:
    template <class T>
    void ReadODB(const varset vs, const string name, const int type, T &retval);
    void ReadODB(const varset vs, const string name, const int type, string &retval);
+   bool ReadSelectFile();
    vector<string> vars, sets;
    vector<int> vtype, stype;
    unsigned int nFixedSettings, nFixedVars;
    int verbose = 1;
    bool connected = false;
+   std::map<string,bool> varselect, setselect;
+   string odbsfilename = "odbselection.txt";
 };
 
 /** \brief global wrapper for Midas callback of class function
@@ -510,7 +521,7 @@ unsigned int feLabview::GetVars()
 {
    sets.resize(nFixedSettings); vars.resize(nFixedVars);
    stype.resize(nFixedSettings); vtype.resize(nFixedVars);
-   string resp = Exchange("list_vars\r\n");
+   string resp = Exchange("list:vars\r\n");
    if(verbose > 1) cout << "Response: " << resp << "(" << resp.size() << ")" << endl;
    vector<string> tokens = split(resp, VARSEPARATOR);
    for(string s: tokens){
@@ -529,6 +540,43 @@ unsigned int feLabview::GetVars()
          }
       } else {
          cerr << "Received bad string >" << s << "<" << endl;
+      }
+   }
+
+   vector<string> newsets, newvars;
+   if(setselect.size() == 0 && varselect.size() == 0){
+      newsets = sets;
+      newvars = vars;
+   } else {
+      for(auto s: sets){
+         if(setselect.find(s) == setselect.end())
+            newsets.push_back(s);
+      }
+      for(auto v: vars){
+         if(varselect.find(v) == varselect.end())
+            newvars.push_back(v);
+      }
+   }
+   if(newsets.size() || newvars.size()){
+      std::ofstream selectfile(odbsfilename.c_str(), std::ios::app);
+      for(auto s: newsets)
+         selectfile << s << VALSEPARATOR << 's' << VALSEPARATOR << 'x' << endl;
+      for(auto v: newvars)
+         selectfile << v << VALSEPARATOR << 'v' << VALSEPARATOR << 'x' << endl;
+      fMfe->Msg(MINFO, "GetVars", "Wrote new ODB selection file %s, please edit and restart fe", odbsfilename.c_str());
+      return 0;
+   }
+
+   for(int i = sets.size()-1; i >= 0; i--){
+      if(!setselect[sets[i]]){
+         sets.erase(sets.begin()+i);
+         stype.erase(stype.begin()+i);
+      }
+   }
+   for(int i = vars.size()-1; i >= 0; i--){
+      if(!varselect[vars[i]]){
+         vars.erase(vars.begin()+i);
+         vtype.erase(vtype.begin()+i);
       }
    }
    vector<string> odbsets, odbvars;
@@ -744,6 +792,43 @@ INT feLabview::read_event()
    return errors;
 }
 
+bool feLabview::ReadSelectFile()
+{
+   std::ifstream selectfile(odbsfilename.c_str());
+   if(!selectfile){
+      cout << "No select file found." << endl;
+      return false;
+   }
+   while(selectfile){
+      string line;
+      std::getline(selectfile, line);
+      if(!selectfile){
+         break;
+      }
+      vector<string> tokens = split(line, VALSEPARATOR);
+      if(tokens.size() != 3){
+         break;
+      }
+      if(tokens[1] == string("v"))
+         varselect[tokens[0]] = (tokens[2] == string("1") || tokens[2] == string("y"));
+      else if(tokens[1] == string("s"))
+         setselect[tokens[0]] = (tokens[2] == string("1") || tokens[2] == string("y"));
+      else { fMfe->Msg(MERROR, "ReadSelectFile", "Unknown entry %s in ODB selection file %s", tokens[1].c_str(), odbsfilename.c_str());
+         return false;
+      }
+      selectfile.peek();
+   }
+   cout << "Settings:" << endl;
+   cout << "Key\tselected" << endl;
+   for(auto e: setselect)
+      cout << e.first << '\t' << e.second << endl;
+   cout << endl << "Variables:" << endl;
+   cout << "Key\tselected" << endl;
+   for(auto e: varselect)
+      cout << e.first << '\t' << e.second << endl;
+   return true;
+}
+
 static void usage()
 {
    fprintf(stderr, "Usage: LabViewDriver_tmfe.exe <name> ...\n");
@@ -804,7 +889,7 @@ int main(int argc, char* argv[])
    if(!connected){
       cm_msg(MERROR, "TCPConnect", "Could not connect to host: %s:%s", myfe->fHostname.c_str(), myfe->fPortnum.c_str());
    } else {
-      myfe->GetVars();
+      connected = (myfe->GetVars() > 0);
    }
    // char rot_set_str[80];
    // HNDLE hkey;
