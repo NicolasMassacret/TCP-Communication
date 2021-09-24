@@ -1,0 +1,4 @@
+{
+    "cmake.sourceDirectory": "${workspaceFolder}/midas",
+    "cmake.buildDirectory": "${workspaceFolder}/midas/build"
+}
