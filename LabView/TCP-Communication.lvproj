@@ -61,13 +61,15 @@
 			<Item Name="Check Loop Error.vi" Type="VI" URL="../support/Check Loop Error.vi"/>
 			<Item Name="Error Handler - Event Handling Loop.vi" Type="VI" URL="../support/Error Handler - Event Handling Loop.vi"/>
 			<Item Name="Error Handler - Message Handling Loop.vi" Type="VI" URL="../support/Error Handler - Message Handling Loop.vi"/>
+			<Item Name="TPC-Enum.ctl" Type="VI" URL="../support/TPC-Enum.ctl"/>
 		</Item>
 		<Item Name="Type Definitions" Type="Folder">
 			<Item Name="UI Data.ctl" Type="VI" URL="../controls/UI Data.ctl"/>
 		</Item>
+		<Item Name="Create List.vi" Type="VI" URL="../support/Create List.vi"/>
+		<Item Name="Get List Variable.vi" Type="VI" URL="../support/Get List Variable.vi"/>
 		<Item Name="Global 1.vi" Type="VI" URL="../support/Global 1.vi"/>
 		<Item Name="TCP-Com.vi" Type="VI" URL="../TCP-Com.vi"/>
-		<Item Name="TPC-Enum.ctl" Type="VI" URL="../support/TPC-Enum.ctl"/>
 		<Item Name="Dependencies" Type="Dependencies">
 			<Item Name="vi.lib" Type="Folder">
 				<Item Name="BuildHelpPath.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/BuildHelpPath.vi"/>
@@ -344,6 +346,45 @@
 				<Property Name="TgtF_legalCopyright" Type="Str">Copyright © 2021 </Property>
 				<Property Name="TgtF_productName" Type="Str">20210922_test5</Property>
 				<Property Name="TgtF_targetfileGUID" Type="Str">{9191DDE0-A9CE-4420-935E-52A5B23287B0}</Property>
+				<Property Name="TgtF_targetfileName" Type="Str">Application.exe</Property>
+				<Property Name="TgtF_versionIndependent" Type="Bool">true</Property>
+			</Item>
+			<Item Name="20210926_test1" Type="EXE">
+				<Property Name="App_copyErrors" Type="Bool">true</Property>
+				<Property Name="App_INI_aliasGUID" Type="Str">{ADFE069A-7D4E-4CF3-89EF-9CC28D2ABEC7}</Property>
+				<Property Name="App_INI_GUID" Type="Str">{0D7177B4-4A55-4905-B370-276B4CDAF9DE}</Property>
+				<Property Name="App_serverConfig.httpPort" Type="Int">8002</Property>
+				<Property Name="Bld_autoIncrement" Type="Bool">true</Property>
+				<Property Name="Bld_buildCacheID" Type="Str">{9AF3D10D-61D0-49D3-8AB3-CD049EEE8DE0}</Property>
+				<Property Name="Bld_buildSpecName" Type="Str">20210926_test1</Property>
+				<Property Name="Bld_excludeInlineSubVIs" Type="Bool">true</Property>
+				<Property Name="Bld_excludeLibraryItems" Type="Bool">true</Property>
+				<Property Name="Bld_excludePolymorphicVIs" Type="Bool">true</Property>
+				<Property Name="Bld_localDestDir" Type="Path">../builds/NI_AB_PROJECTNAME/20210926_test1</Property>
+				<Property Name="Bld_localDestDirType" Type="Str">relativeToCommon</Property>
+				<Property Name="Bld_modifyLibraryFile" Type="Bool">true</Property>
+				<Property Name="Bld_previewCacheID" Type="Str">{F871F608-550A-4834-BBE7-ABCC12993E49}</Property>
+				<Property Name="Bld_version.build" Type="Int">1</Property>
+				<Property Name="Bld_version.major" Type="Int">1</Property>
+				<Property Name="Destination[0].destName" Type="Str">Application.exe</Property>
+				<Property Name="Destination[0].path" Type="Path">../builds/NI_AB_PROJECTNAME/20210926_test1/Application.exe</Property>
+				<Property Name="Destination[0].preserveHierarchy" Type="Bool">true</Property>
+				<Property Name="Destination[0].type" Type="Str">App</Property>
+				<Property Name="Destination[1].destName" Type="Str">Support Directory</Property>
+				<Property Name="Destination[1].path" Type="Path">../builds/NI_AB_PROJECTNAME/20210926_test1/data</Property>
+				<Property Name="DestinationCount" Type="Int">2</Property>
+				<Property Name="Source[0].itemID" Type="Str">{DAA2477A-3ACA-44D9-A994-A783E16C6230}</Property>
+				<Property Name="Source[0].type" Type="Str">Container</Property>
+				<Property Name="Source[1].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[1].itemID" Type="Ref">/My Computer/Exemple/Exemple.vi</Property>
+				<Property Name="Source[1].sourceInclusion" Type="Str">TopLevel</Property>
+				<Property Name="Source[1].type" Type="Str">VI</Property>
+				<Property Name="SourceCount" Type="Int">2</Property>
+				<Property Name="TgtF_fileDescription" Type="Str">20210926_test1</Property>
+				<Property Name="TgtF_internalName" Type="Str">20210926_test1</Property>
+				<Property Name="TgtF_legalCopyright" Type="Str">Copyright © 2021 </Property>
+				<Property Name="TgtF_productName" Type="Str">20210926_test1</Property>
+				<Property Name="TgtF_targetfileGUID" Type="Str">{BAF86B7E-C840-4F67-8A8B-325DE44C2EBF}</Property>
 				<Property Name="TgtF_targetfileName" Type="Str">Application.exe</Property>
 				<Property Name="TgtF_versionIndependent" Type="Bool">true</Property>
 			</Item>

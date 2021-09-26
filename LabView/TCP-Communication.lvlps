@@ -1,5 +1,5 @@
 [ProjectWindow_Data]
-ProjectExplorer.ClassicPosition[String] = "97,67,727,705"
+ProjectExplorer.ClassicPosition[String] = "112,287,742,925"
 
 [AB_Cache_{FC342A5F-4005-4C4D-BE80-F37331512559}]
 Cache_Path[Path] Line0001 = "/C/Users/Nicolas Massacret/AppData/Local/Temp/AB_C"
@@ -48,4 +48,12 @@ Cache_Path[Path] Line0002 = "ache_{D0D4B83C-8BB5-4CE1-82E1-6C0C2FDC0C61}.txt"
 [AB_Cache_{482C00F3-73B6-4D94-B2F0-F712D2B75567}]
 Cache_Path[Path] Line0001 = "/C/Users/Nicolas Massacret/AppData/Local/Temp/AB_C"
 Cache_Path[Path] Line0002 = "ache_{482C00F3-73B6-4D94-B2F0-F712D2B75567}.txt"
+
+[AB_Cache_{9AF3D10D-61D0-49D3-8AB3-CD049EEE8DE0}]
+Cache_Path[Path] Line0001 = "/C/Users/Nicolas Massacret/AppData/Local/Temp/AB_C"
+Cache_Path[Path] Line0002 = "ache_{9AF3D10D-61D0-49D3-8AB3-CD049EEE8DE0}.txt"
+
+[AB_Cache_{F871F608-550A-4834-BBE7-ABCC12993E49}]
+Cache_Path[Path] Line0001 = "/C/Users/Nicolas Massacret/AppData/Local/Temp/AB_C"
+Cache_Path[Path] Line0002 = "ache_{F871F608-550A-4834-BBE7-ABCC12993E49}.txt"
 
