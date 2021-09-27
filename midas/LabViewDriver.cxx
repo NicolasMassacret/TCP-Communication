@@ -200,8 +200,11 @@ private:
    int TypeConvert(const string &s);
    string TypeConvert(const int t);
    enum varset { var, set };
+
    template <class T>
    bool ReadLVVar(const varset vs, const string name, const int type, T &retval);
+   bool ReadLVVar(const varset vs, const string name, const int type, string &retval);
+
    bool WriteLVSetFromODB(const HNDLE hkey, bool confirm = true);
    template <class T>
    bool WriteLVSet(const string name, const int type, const T val, bool confirm = true);
@@ -322,6 +325,31 @@ bool feLabview::ReadLVVar(const varset vs, const string name, const int type, T 
       default:
          if(iss >> retval) success = true;    // this acts like a boolean, so if the operation fails, returns false
       }
+   }
+   return success;
+}
+
+bool feLabview::ReadLVVar(const varset vs, const string name, const int type, string &retval)
+{
+   std::ostringstream oss;
+   // if(vs == var) oss << 'R';
+   // else if(vs == set) oss << 'W';
+   // oss << TypeConvert(type);
+   oss << name;
+   string varname = oss.str();
+   oss << VALSEPARATOR << "?\r\n";
+   string resp=Exchange(oss.str(), true, varname);
+   if(verbose>2) cout << "ReadLVVar Sent: " << oss.str() << "\tReceived: " << resp << endl;
+   vector<string> rv = split(resp, VALSEPARATOR);
+   bool success = false;
+   if(rv.size()==2){
+      if(rv[0] != varname){
+         cm_msg(MERROR, "ReadLVVar", "Asked for %s, but got %s", name.c_str(), rv[0].c_str());
+         return false;
+      }
+      assert(type == TID_STRING);
+      retval = rv[1];
+      success = true;
    }
    return success;
 }
