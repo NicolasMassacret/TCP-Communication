@@ -21,6 +21,7 @@
 #include <map>
 
 #include "midas.h"
+#include "msystem.h"
 #include "tmfe.h"
 
 #include "KOtcp.h"
@@ -113,10 +114,12 @@ public:
       nFixedSettings = sets.size();
       nFixedVars = vars.size();
 
+      string exppath = cm_get_path();
+      odbsfilename = exppath + "/" + fEq->fName + "_odbselection.txt";
       if(ReadSelectFile()){
-         cout << "Select file read." << endl;
+         cout << "Select file " << odbsfilename << " read." << endl;
       } else {
-         cout << "No select file" << endl;
+         cout << "No select file " << odbsfilename << endl;
       }
    }
 
@@ -223,7 +226,7 @@ private:
    int verbose = 1;
    bool connected = false;
    std::map<string,bool> varselect, setselect;
-   string odbsfilename = "odbselection.txt";
+   string odbsfilename;
 };
 
 /** \brief global wrapper for Midas callback of class function
