@@ -110,13 +110,15 @@ public:
       stype.push_back(TID_INT32);
       sets.push_back("applyOnFestart");
       stype.push_back(TID_BOOL);
+      fEq->fOdbEqSettings->RB("applyOnFestart", &apply_on_start, true);
 
-      nFixedSettings = sets.size();
-      nFixedVars = vars.size();
+      fixedSets = sets;
+      fixedVars = vars;
 
       string exppath = cm_get_path();
       odbsfilename = exppath + "/" + fEq->fName + "_odbselection.txt";
-      if(ReadSelectFile()){
+      select_exists = ReadSelectFile();
+      if(select_exists){
          cout << "Select file " << odbsfilename << " read." << endl;
       } else {
          cout << "No select file " << odbsfilename << endl;
@@ -191,6 +193,7 @@ public:
    /** \brief Request list of variables from LabView, populate ODB. */
    unsigned int GetVars();
    bool Connected(){return connected;}
+   bool SyncSettings();
 private:
    /** \brief Confirm server we're talking to is actually LabView. */
    bool Handshake(){
@@ -208,9 +211,16 @@ private:
    bool ReadLVVar(const varset vs, const string name, const int type, T &retval);
    bool ReadLVVar(const varset vs, const string name, const int type, string &retval);
 
-   bool WriteLVSetFromODB(const HNDLE hkey, bool confirm = true);
+   bool LVtoODB(const varset vs, const string name, const int type);
+
+   bool WriteLVSetFromODB(const HNDLE hkey);
+   bool WriteLVSetFromODB(const KEY key);
    template <class T>
-   bool WriteLVSet(const string name, const int type, const T val, bool confirm = true);
+   bool WriteLVSet(const string name, const int type, const T val);
+   bool WriteLVSet(const string name, const int type, const double val);
+   bool WriteLVSet(const string name, const int type, const float val){
+      return WriteLVSet(name, type, (double)val);
+   }
    template <class T>
    void WriteODB(const varset vs, const string name, const int type, const T val);
    void WriteODB(const varset vs, const string name, const int type, const int64_t val);
@@ -219,14 +229,40 @@ private:
    template <class T>
    void ReadODB(const varset vs, const string name, const int type, T &retval);
    void ReadODB(const varset vs, const string name, const int type, string &retval);
+
+   template <class T>
+   inline void ReadODBVal(MVOdb *db, const string name, T &val){
+      cm_msg(MERROR, "ReadODBVar", "Requested unknown ODB type");
+   };
+   void ReadODBVal(MVOdb *db, const string name, bool &val){
+      db->RB(name.c_str(), &val);
+   };   
+   void ReadODBVal(MVOdb *db, const string name, int32_t &val){
+      db->RI(name.c_str(), &val);
+   };   
+   void ReadODBVal(MVOdb *db, const string name, float &val){
+      db->RF(name.c_str(), &val);
+   };   
+   void ReadODBVal(MVOdb *db, const string name, double &val){
+      db->RD(name.c_str(), &val);
+   };   
+   void ReadODBVal(MVOdb *db, const string name, uint16_t &val){
+      db->RU16(name.c_str(), &val);
+   };   
+   void ReadODBVal(MVOdb *db, const string name, uint32_t &val){
+      db->RU32(name.c_str(), &val);
+   };   
+
    bool ReadSelectFile();
-   vector<string> vars, sets;
+   vector<string> vars, sets, fixedSets, fixedVars;
    vector<int> vtype, stype;
-   unsigned int nFixedSettings, nFixedVars;
    int verbose = 1;
    bool connected = false;
    std::map<string,bool> varselect, setselect;
    string odbsfilename;
+   bool apply_on_start;
+   bool select_exists;
+   vector<KEY> odbsetkeys;
 };
 
 /** \brief global wrapper for Midas callback of class function
@@ -245,9 +281,9 @@ int feLabview::TypeConvert(const string &stype)
    else if(stype == string("I16")) return TID_INT16;
    else if(stype == string("I32")) return TID_INT32;
    else if(stype == string("I64")) return TID_INT64;
-   else if(stype == string("U8")) return TID_UINT8;
-   else if(stype == string("U16")) return TID_UINT16;
-   else if(stype == string("U32")) return TID_UINT32;
+   else if(stype.find("U8") != string::npos) return TID_UINT8;
+   else if(stype.find("U16") != string::npos) return TID_UINT16;
+   else if(stype.find("U32") != string::npos) return TID_UINT32;
    else if(stype == string("U64")) return TID_UINT64;
    else if(stype == string("Single Float")) return TID_FLOAT;
    else if(stype == string("Double Float")) return TID_DOUBLE;
@@ -343,7 +379,12 @@ bool feLabview::ReadLVVar(const varset vs, const string name, const int type, st
    oss << VALSEPARATOR << "?\r\n";
    string resp=Exchange(oss.str(), true, varname);
    if(verbose>2) cout << "ReadLVVar Sent: " << oss.str() << "\tReceived: " << resp << endl;
-   vector<string> rv = split(resp, VALSEPARATOR);
+   vector<string> rv;
+   size_t sep = resp.find_first_of(VALSEPARATOR);
+   if(sep != string::npos){
+      rv.push_back(resp.substr(0, sep));
+      rv.push_back(resp.substr(sep+1));
+   }
    bool success = false;
    if(rv.size()==2){
       if(rv[0] != varname){
@@ -357,105 +398,118 @@ bool feLabview::ReadLVVar(const varset vs, const string name, const int type, st
    return success;
 }
 
-bool feLabview::WriteLVSetFromODB(const HNDLE hkey, bool confirm)
+bool feLabview::WriteLVSetFromODB(const HNDLE hkey)
 {
-   MVOdb *db = fEq->fOdbEqSettings;
    KEY key;
    int status = db_get_key(fMfe->fDB, hkey, &key);
-   bool success = !confirm;
-   if(status == DB_SUCCESS){    // Use template functions here
-      if(verbose > 1){
-         std::cout << "Setting ODB entry " << key.name << std::endl;
-      }
-      switch(key.type){
-      case TID_BOOL:{
-         bool val;
-         db->RB(key.name, &val);
-         success = WriteLVSet(key.name, key.type, val, confirm);
-         break;
-      }
-      case TID_INT32:{
-         int val;
-         db->RI(key.name, &val);
-         success = WriteLVSet(key.name, key.type, val, confirm);
-         break;
-      }
-      case TID_FLOAT:{
-         float val;
-         db->RF(key.name, &val);
-         success = WriteLVSet(key.name, key.type, val, confirm);
-         break;
-      }
-      case TID_DOUBLE:{
-         double val;
-         db->RD(key.name, &val);
-         success = WriteLVSet(key.name, key.type, val, confirm);
-         break;
-      }
-      case TID_STRING:{
-         string val;
-         db->RS(key.name, &val);
-         success = WriteLVSet(key.name, key.type, val, confirm);
-         break;
-      }
-      case TID_UINT16:{
-         uint16_t val;
-         db->RU16(key.name, &val);
-         success = WriteLVSet(key.name, key.type, val, confirm);
-         break;
-      }
-      case TID_UINT32:{
-         uint32_t val;
-         db->RU32(key.name, &val);
-         success = WriteLVSet(key.name, key.type, val, confirm);
-         break;
-      }
-      }
-      return success;
-   } else {
+   if(status == DB_SUCCESS)
+      return WriteLVSetFromODB(key);
+   else
       return false;
+}
+
+bool feLabview::WriteLVSetFromODB(const KEY key)
+{
+   MVOdb *db = fEq->fOdbEqSettings;
+   bool success = false;
+
+   if(verbose > 1){
+      std::cout << "Setting ODB entry " << key.name << std::endl;
    }
+   switch(key.type){
+   case TID_BOOL:{
+      bool val;
+      db->RB(key.name, &val);
+      success = WriteLVSet(key.name, key.type, val);
+      break;
+   }
+   case TID_INT32:{
+      int val;
+      db->RI(key.name, &val);
+      success = WriteLVSet(key.name, key.type, val);
+      break;
+   }
+   case TID_FLOAT:{
+      float val;
+      db->RF(key.name, &val);
+      success = WriteLVSet(key.name, key.type, val);
+      break;
+   }
+   case TID_DOUBLE:{
+      double val;
+      db->RD(key.name, &val);
+      success = WriteLVSet(key.name, key.type, val);
+      break;
+   }
+   case TID_STRING:{
+      string val;
+      db->RS(key.name, &val);
+      success = WriteLVSet(key.name, key.type, val);
+      break;
+   }
+   case TID_UINT16:{
+      uint16_t val;
+      db->RU16(key.name, &val);
+      success = WriteLVSet(key.name, key.type, val);
+      break;
+   }
+   case TID_UINT32:{
+      uint32_t val;
+      db->RU32(key.name, &val);
+      success = WriteLVSet(key.name, key.type, val);
+      break;
+   }
+   }
+   return success;
 }
 
 template <class T>
-bool feLabview::WriteLVSet(const string name, const int type, const T val, bool confirm)
+bool feLabview::WriteLVSet(const string name, const int type, const T val)
 {
    std::ostringstream oss;
    // oss << 'W';
    // oss << TypeConvert(type);
    oss << name << VALSEPARATOR;
-   if(type == TID_FLOAT || type == TID_DOUBLE){ // FIXME: hack because currently Labview doesn't know how to read scientific notation
-      oss << std::fixed << std::setprecision(16);
-   }
-   oss << val << "\r\n";
+   oss << val;
+   string orig = oss.str();
+   oss << "\r\n";
    if(verbose > 1){
       cout << "Sending: " << oss.str() << endl;
    }
-   Exchange(oss.str(), false);
-   if(confirm){
-      usleep(100000);
-      T retval;
-      verbose++;
-      bool result = ReadLVVar(set, name, type, retval); // FIXME: Readback fails somehow
-      int count = 0;
-      while(!result && count < 3){
-         if(verbose > 1) cerr << "Readback failed, trying again..." << count << endl;
-         result = ReadLVVar(set, name, type, retval); // FIXME: second attempt usually works
-         count++;
-      }
-      verbose--;
-      if(!result){
-         cm_msg(MERROR, "WriteLVSet", "Readback for %s failed\n", name.c_str());
-      } else if(retval != val){
-         std::ostringstream oss2;
-         oss2 << "Readback for " << name << " doesn't match request: " << retval << " != " << val;
-         cm_msg(MERROR, "WriteLVSet", "%s", oss2.str().c_str());
-      } else if(verbose>1){
-         cout << "WriteLVSet Sent: " << oss.str() << "\tReceived: " << retval << endl;
-      }
-      return result;
-   } else {
+   string resp = Exchange(oss.str());
+   if(resp == orig)
       return true;
+   else {
+      cm_msg(MERROR, "WriteLVSet", "LabView comm. error: %s != %s", resp.c_str(), oss.str().substr(0, oss.str().find_last_not_of("\r\n")+1).c_str());
+      return false;
+   }
+}
+
+bool feLabview::WriteLVSet(const string name, const int type, const double val)
+{
+   std::ostringstream oss;
+   // oss << 'W';
+   // oss << TypeConvert(type);
+   oss << name << VALSEPARATOR;
+
+   // FIXME: hack because currently Labview doesn't know how to read scientific notation
+   oss << std::fixed << std::setprecision(16);
+
+   oss << val;
+   string orig = oss.str();
+   oss << "\r\n";
+   if(verbose > 1){
+      cout << "Sending: " << oss.str() << endl;
+   }
+   string resp = Exchange(oss.str());
+
+   double retval = atof(resp.substr(resp.find_first_of(VALSEPARATOR)+1).c_str());
+
+   if(retval == val)
+      return true;
+   else {
+      cm_msg(MERROR, "WriteLVSet", "LabView comm. error: %f != %f", retval, val);
+      return false;
    }
 }
 
@@ -526,17 +580,18 @@ void feLabview::ReadODB(const varset vs, const string name, const int type, T &v
    if(vs == set) db = fEq->fOdbEqSettings;
    assert(type != TID_STRING);
    switch(type){
-   case TID_BOOL:   db->RB(name.c_str(), val); break;
    case TID_INT8:
    case TID_INT16:
-   case TID_INT32:    db->RI(name.c_str(), val); break;
-   case TID_INT64: int32_t i32; db->RI(name.c_str(), &i32); val = i32; break;
-   case TID_FLOAT:  db->RF(name.c_str(), val); break;
-   case TID_DOUBLE: db->RD(name.c_str(), val); break;
+   case TID_INT64: int32_t i32; ReadODBVal(db, name, i32); val = i32; break;
    case TID_UINT8:
-   case TID_UINT16:   db->RU16(name.c_str(), val); break;
-   case TID_UINT32:  db->RU32(name.c_str(), val); break;
-   case TID_UINT64: uint32_t u32; db->RU32(name.c_str(), &u32); val = u32; break;
+   case TID_UINT64: uint32_t u32; ReadODBVal(db, name, u32); val = u32; break;
+   case TID_BOOL:
+   case TID_INT32:
+   case TID_FLOAT:
+   case TID_DOUBLE:
+   case TID_UINT16:
+   case TID_UINT32:
+   default: ReadODBVal(db, name, val);
    }
 }
 
@@ -550,8 +605,8 @@ void feLabview::ReadODB(const varset vs, const string name, const int type, stri
 
 unsigned int feLabview::GetVars()
 {
-   sets.resize(nFixedSettings); vars.resize(nFixedVars);
-   stype.resize(nFixedSettings); vtype.resize(nFixedVars);
+   sets.resize(fixedSets.size()); vars.resize(fixedVars.size());
+   stype.resize(fixedSets.size()); vtype.resize(fixedVars.size());
    string resp = Exchange("list:vars\r\n");
    if(verbose > 1) cout << "Response: " << resp << "(" << resp.size() << ")" << endl;
    vector<string> tokens = split(resp, VARSEPARATOR);
@@ -576,20 +631,21 @@ unsigned int feLabview::GetVars()
 
    vector<string> newsets, newvars;
    if(setselect.size() == 0 && varselect.size() == 0){
-      newsets = sets;
-      newvars = vars;
+      newsets = vector<string>(sets.begin() + fixedSets.size(), sets.end());
+      newvars = vector<string>(vars.begin() + fixedVars.size(), vars.end());
    } else {
-      for(auto s: sets){
-         if(setselect.find(s) == setselect.end())
-            newsets.push_back(s);
+      for(auto it = sets.begin() + fixedSets.size(); it != sets.end(); it++){
+         if(setselect.find(*it) == setselect.end())
+            newsets.push_back(*it);
       }
-      for(auto v: vars){
-         if(varselect.find(v) == varselect.end())
-            newvars.push_back(v);
+      for(auto it = vars.begin() + fixedVars.size(); it != vars.end(); it++){
+         if(varselect.find(*it) == varselect.end())
+            newvars.push_back(*it);
       }
    }
    if(newsets.size() || newvars.size()){
       std::ofstream selectfile(odbsfilename.c_str(), std::ios::app);
+      if(!select_exists) selectfile << "# Only edit final column, y to include in ODB, n to ignore." << endl;
       for(auto s: newsets)
          selectfile << s << VALSEPARATOR << 's' << VALSEPARATOR << 'x' << endl;
       for(auto v: newvars)
@@ -612,7 +668,7 @@ unsigned int feLabview::GetVars()
    }
    vector<string> odbsets, odbvars;
    vector<int> odbstid, odbvtid;
-   vector<KEY> odbsetkeys, odbvarkeys;
+   vector<KEY> odbvarkeys;
    char tmpbuf[80];
    sprintf(tmpbuf, "/Equipment/%s/Settings", fMfe->fFrontendName.c_str());
    HNDLE odbs, odbv;
@@ -621,13 +677,21 @@ unsigned int feLabview::GetVars()
    db_find_key(fMfe->fDB, 0, tmpbuf, &odbv);
    db_scan_tree(fMfe->fDB, odbs, 0, add_key, (void*)&odbsetkeys);
    db_scan_tree(fMfe->fDB, odbv, 0, add_key, (void*)&odbvarkeys);
-   for(KEY key: odbsetkeys){
-      odbsets.push_back(key.name);
-      odbstid.push_back(key.type);
+   auto it = odbsetkeys.begin();
+   while(it != odbsetkeys.end()){
+      if(std::find(fixedSets.begin(), fixedSets.end(), it->name) == fixedSets.end()){
+         odbsets.push_back(it->name);
+         odbstid.push_back(it->type);
+         it++;
+      } else {
+         it = odbsetkeys.erase(it);
+      }
    }
    for(KEY key: odbvarkeys){
-      odbvars.push_back(key.name);
-      odbvtid.push_back(key.type);
+      if(std::find(fixedVars.begin(), fixedVars.end(), key.name) == fixedVars.end()){
+         odbvars.push_back(key.name);
+         odbvtid.push_back(key.type);
+      }
    }
    // fEq->fOdbEqSettings->ReadDir(&odbsets, &odbstid, &odbsnum, &tsize, &isize); // FIXME: function not implememnted!
    // fEq->fOdbEqVariables->ReadDir(&odbvars, &odbvtid, &odbvnum, &tsize, &isize);
@@ -715,7 +779,7 @@ unsigned int feLabview::GetVars()
       }
    }
    int orphans = 0;
-   for(unsigned int i = nFixedSettings; i < odbsets.size(); i++){
+   for(unsigned int i = 0; i < odbsets.size(); i++){
       vector<string>::iterator it = std::find(sets.begin(), sets.end(), odbsets[i]);
       if(it == sets.end()){
          orphans++;
@@ -746,79 +810,110 @@ unsigned int feLabview::GetVars()
 
 void feLabview::fecallback(HNDLE hDB, HNDLE hkey, INT index)
 {
-   WriteLVSetFromODB(hkey, true);
+   WriteLVSetFromODB(hkey);
 }
 
+bool feLabview::LVtoODB(const varset vs, const string name, const int type)
+{
+   bool success = false;
+   switch(type){
+   case TID_BOOL:
+      {
+         bool val, odbval;
+         ReadODB(vs, name, type, odbval);
+         success = ReadLVVar(vs, name, type, val);
+         if(val != odbval)
+            WriteODB(vs, name, type, val);
+         break;
+      }
+   case TID_INT8:
+   case TID_INT16:
+   case TID_INT64:
+   case TID_INT32:
+      {
+         int val, odbval;
+         ReadODB(vs, name, type, odbval);
+         success = ReadLVVar(vs, name, type, val);
+         if(val != odbval)
+            WriteODB(vs, name, type, val);
+         break;
+      }
+   case TID_DOUBLE:
+      {
+         double val, odbval;
+         ReadODB(vs, name, type, odbval);
+         success = ReadLVVar(vs, name, type, val);
+         if(val != odbval)
+            WriteODB(vs, name, type, val);
+         break;
+      }
+   case TID_FLOAT:
+      {
+         float val, odbval;
+         ReadODB(vs, name, type, odbval);
+         success = ReadLVVar(vs, name, type, val);
+         if(val != odbval)
+            WriteODB(vs, name, type, val);
+         break;
+      }
+   case TID_STRING:
+      {
+         string val, odbval;
+         ReadODB(vs, name, type, odbval);
+         success = ReadLVVar(vs, name, type, val);
+         if(val != odbval)
+            WriteODB(vs, name, type, val);
+         break;
+      }
+   case TID_UINT8:
+   case TID_UINT16:
+      {
+         uint16_t val, odbval;
+         ReadODB(vs, name, type, odbval);
+         success = ReadLVVar(vs, name, type, val);
+         if(val != odbval)
+            WriteODB(vs, name, type, val);
+         break;
+      }
+   case TID_UINT64:
+   case TID_UINT32:
+      {
+         uint32_t val, odbval;
+         ReadODB(vs, name, type, odbval);
+         success = ReadLVVar(vs, name, type, val);
+         if(val != odbval)
+            WriteODB(vs, name, type, val);
+         break;
+      }
+   }
+   return success;
+}
+
+bool feLabview::SyncSettings()
+{
+   bool success = true;
+   if(apply_on_start){          // write ODB settings to LabView
+      for(KEY key: odbsetkeys){
+         success &= WriteLVSetFromODB(key);
+      }
+   } else {                     // copy LabView settings to ODB
+      for(unsigned int i = 0; i < sets.size(); i++){
+         success &= LVtoODB(set, sets[i], stype[i]);
+      }
+   }
+   return success;
+}
 
 INT feLabview::read_event()
 {
    int errors = 0;
+   for(unsigned int i = 0; i < sets.size(); i++){
+      if(!LVtoODB(set, sets[i], stype[i]))
+         errors++;
+   }
    for(unsigned int i = 0; i < vars.size(); i++){
-      std::ostringstream oss;
-      oss << 'R';
-      switch(vtype[i]){
-      case TID_BOOL:
-         {
-            bool val;
-            if(!ReadLVVar(var, vars[i], vtype[i], val))
-               errors++;
-            WriteODB(var, vars[i], vtype[i], val);
-            break;
-         }
-      case TID_INT8:
-      case TID_INT16:
-      case TID_INT64:
-      case TID_INT32:
-         {
-            int val;
-            if(!ReadLVVar(var, vars[i], vtype[i], val))
-               errors++;
-            WriteODB(var, vars[i], vtype[i], val);
-            break;
-         }
-      case TID_DOUBLE:
-         {
-            double val;
-            if(!ReadLVVar(var, vars[i], vtype[i], val))
-               errors++;
-            WriteODB(var, vars[i], vtype[i], val);
-            break;
-         }
-      case TID_FLOAT:
-         {
-            float val;
-            if(!ReadLVVar(var, vars[i], vtype[i], val))
-               errors++;
-            WriteODB(var, vars[i], vtype[i], val);
-            break;
-         }
-      case TID_STRING:
-         {
-            string val;
-            if(!ReadLVVar(var, vars[i], vtype[i], val))
-               errors++;
-            WriteODB(var, vars[i], vtype[i], val);
-            break;
-         }
-      case TID_UINT8:
-      case TID_UINT16:
-         {
-            uint16_t val;
-            if(!ReadLVVar(var, vars[i], vtype[i], val))
-               errors++;
-            WriteODB(var, vars[i], vtype[i], val);
-            break;
-         }
-      case TID_UINT64:
-      case TID_UINT32:
-         {
-            uint32_t val;
-            if(!ReadLVVar(var, vars[i], vtype[i], val))
-               errors++;
-            WriteODB(var, vars[i], vtype[i], val);
-            break;
-         }
-      }
+      if(!LVtoODB(var, vars[i], vtype[i]))
+         errors++;
    }
    return errors;
 }
@@ -836,6 +931,7 @@ bool feLabview::ReadSelectFile()
       if(!selectfile){
          break;
       }
+      if(line.at(0) == '#') continue;
       vector<string> tokens = split(line, VALSEPARATOR);
       if(tokens.size() != 3){
          break;
@@ -862,7 +958,7 @@ bool feLabview::ReadSelectFile()
 
 static void usage()
 {
-   fprintf(stderr, "Usage: LabViewDriver_tmfe.exe <name> ...\n");
+   fprintf(stderr, "Usage: LabViewDriver_tmfe.exe <Eqname> ...\n");
    exit(1);
 }
 
@@ -877,6 +973,7 @@ int main(int argc, char* argv[])
 
    if (argc == 2) {
       name = argv[1];
+      if(name == "-h") usage();
    } else {
       usage(); // DOES NOT RETURN
    }
@@ -892,9 +989,9 @@ int main(int argc, char* argv[])
    //mfe->SetWatchdogSec(0);
 
    TMFeCommon *common = new TMFeCommon();
-   common->EventID = 1;
+   common->EventID = 10;
    common->LogHistory = 1;
-   //common->Buffer = "SYSTEM";
+   common->Buffer = "SYSTEM";
 
    TMFeEquipment* eq = new TMFeEquipment(mfe, name.c_str(), common);
    eq->Init();
@@ -939,6 +1036,7 @@ int main(int argc, char* argv[])
       oss << "Connected to " << myfe->fHostname << ':' << myfe->fPortnum;
       eq->SetStatus(oss.str().c_str(), "lightgreen");
 
+      myfe->SyncSettings();
       while (!mfe->fShutdownRequested && myfe->Connected()) {
          mfe->PollMidas(10);
       }
