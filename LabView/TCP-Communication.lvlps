@@ -73,3 +73,11 @@ Cache_Path[Path] Line0002 = "ache_{0C83B779-4019-4AD6-8D12-83639DEB4FC8}.txt"
 Cache_Path[Path] Line0001 = "/C/Users/Nicolas Massacret/AppData/Local/Temp/AB_C"
 Cache_Path[Path] Line0002 = "ache_{EC7B9871-663B-43F6-8C9A-F59C013BB19A}.txt"
 
+[AB_Cache_{43835946-5753-428C-96A4-B455E1C72F35}]
+Cache_Path[Path] Line0001 = "/C/Users/Nicolas Massacret/AppData/Local/Temp/AB_C"
+Cache_Path[Path] Line0002 = "ache_{43835946-5753-428C-96A4-B455E1C72F35}.txt"
+
+[AB_Cache_{6A851E69-DFC5-4515-8FD2-46ED9908B737}]
+Cache_Path[Path] Line0001 = "/C/Users/Nicolas Massacret/AppData/Local/Temp/AB_C"
+Cache_Path[Path] Line0002 = "ache_{6A851E69-DFC5-4515-8FD2-46ED9908B737}.txt"
+
